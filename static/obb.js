@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 
+// Keep track of OBB meshes
+let obbMeshes = [];
+
 export function addOBB(scene, { center, size, rotation }) {
+  // Remove previous OBBs
+  obbMeshes.forEach(mesh => scene.remove(mesh));
+  obbMeshes = [];
+
   const [sx, sy, sz] = size;
   const boxGeometry = new THREE.BoxGeometry(sx, sy, sz);
   const material = new THREE.MeshBasicMaterial({
@@ -24,4 +31,5 @@ export function addOBB(scene, { center, size, rotation }) {
   obbMesh.position.copy(position);
 
   scene.add(obbMesh);
+  obbMeshes.push(obbMesh);
 }
