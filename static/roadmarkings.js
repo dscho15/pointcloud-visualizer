@@ -7,6 +7,7 @@ let currentLine = null;
 let selectedRoadIndex = null;
 
 export function enableRoadMarkingDrawing(scene, camera, renderer) {
+  // (Removed rotateCameraAroundPoint and orbitcontrols integration as requested)
   // Store point marker meshes for current drawing
   let pointMarkers = [];
 
@@ -70,8 +71,8 @@ function createKeybindsMenu() {
 createKeybindsMenu();
 
   renderer.domElement.addEventListener('pointerdown', (event) => {
-    // Only respond to left mouse button (event.button === 0)
-    if (event.button !== 0) return;
+    // Only respond to right mouse button (event.button === 2)
+    if (event.button !== 2) return;
     // Get mouse position in normalized device coordinates (-1 to +1)
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
@@ -85,6 +86,8 @@ createKeybindsMenu();
     const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     const point = new THREE.Vector3();
     raycaster.ray.intersectPlane(plane, point);
+
+    // (Removed shift+click camera rotation as requested)
 
     // Merge with existing point if within 0.003 units (0.3 cm)
     let merged = false;
