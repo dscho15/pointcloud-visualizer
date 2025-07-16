@@ -3,7 +3,7 @@ import { initWebSocket } from './websocket.js';
 import { createPointCloud, updatePointCloud } from './pointcloud.js';
 import { addOBB } from './obb.js';
 import { setupControls } from './controls.js';
-import { enableRoadMarkingDrawing } from './roadmarkings.js';
+import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
 
 const canvas = document.getElementById('webgl');
 const scene = new THREE.Scene();
@@ -20,6 +20,8 @@ renderer.setPixelRatio(window.devicePixelRatio);
 const controls = setupControls(camera, renderer.domElement);
 // Enable interactive road marking drawing
 enableRoadMarkingDrawing(scene, camera, renderer);
+// Setup road UI (selection, delete, new)
+setupRoadUI(scene, camera, renderer);
 
 // Add better lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Softer ambient light

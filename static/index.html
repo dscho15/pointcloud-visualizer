@@ -15,6 +15,12 @@
   </script>
 </head>
 <body>
+  <div id="road-ui" style="position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
+    <button id="new-road-btn">New Road</button>
+    <button id="delete-road-btn" disabled>Delete Road</button>
+    <button id="edit-road-btn" disabled>Edit Road</button>
+    <span id="road-status" style="margin-left: 10px;"></span>
+  </div>
   <canvas id="webgl"></canvas>
   <script type="module" src="/static/main.js"></script>
 </body>
