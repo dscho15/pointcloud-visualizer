@@ -3,6 +3,7 @@ import { initWebSocket } from './websocket.js';
 import { createPointCloud, updatePointCloud } from './pointcloud.js';
 import { addOBB } from './obb.js';
 import { setupControls } from './controls.js';
+import { enableRoadMarkingDrawing } from './roadmarkings.js';
 
 const canvas = document.getElementById('webgl');
 const scene = new THREE.Scene();
@@ -17,6 +18,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 const controls = setupControls(camera, renderer.domElement);
+// Enable interactive road marking drawing
+enableRoadMarkingDrawing(scene, camera, renderer);
 
 // Add better lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Softer ambient light
@@ -26,12 +29,17 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 10, 5);
 scene.add(directionalLight);
 
-// Add coordinate axes for reference
-const axesHelper = new THREE.AxesHelper(2);
+// Add large, thick coordinate axes for reference
+const axesLength = 10;
+const axesHelper = new THREE.AxesHelper(axesLength);
 scene.add(axesHelper);
 
-// Add a simple grid
-const gridHelper = new THREE.GridHelper(4, 10, 0x444444, 0x444444);
+// Add a grid in the x-y plane (z=0), more visible
+const gridSize = 20;
+const gridDivisions = 40;
+const gridColor = 0x888888;
+const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
+gridHelper.rotation.x = Math.PI / 2; // Make grid in x-y plane
 scene.add(gridHelper);
 
 // Handle resizing
