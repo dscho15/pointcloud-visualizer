@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getCurrentRoadWidth } from './controls.js';
 
 let currentPoints = [];
 let polylines = [];
@@ -115,9 +116,11 @@ createKeybindsMenu();
 
   renderer.domElement.addEventListener('dblclick', () => {
     if (currentPoints.length > 1) {
-      // Create a ribbon/road mesh from the spline
+      // Use current width from UI
+      const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 0.06;
       const curve = new THREE.CatmullRomCurve3(currentPoints);
-      const roadMesh = createRoadMeshFromSpline(curve, 3, 100);
+      const roadMesh = createRoadMeshFromSpline(curve, width, 100);
+      roadMesh.userData.width = width;
       scene.add(roadMesh);
       polylines.push(currentPoints.map(p => p.clone()));
       roadMeshes.push(roadMesh);
@@ -135,7 +138,7 @@ createKeybindsMenu();
 }
 
 // --- Ribbon/Road mesh from spline ---
-function createRoadMeshFromSpline(curve, width = 3, segments = 100, getHeight = null) {
+function createRoadMeshFromSpline(curve, width = 0.06, segments = 100, getHeight = null) {
   const halfWidth = width / 2;
   const points = curve.getPoints(segments);
   const leftSide = [];
@@ -250,6 +253,37 @@ function selectRoad(index, scene) {
     // Highlight selected (slightly lighter gray, not blue)
     roadMeshes[selectedRoadIndex].material.emissive = new THREE.Color(0x444444);
     roadMeshes[selectedRoadIndex].material.color.set(0x444444);
+    // --- Add width UI sync for selected road ---
+    const slider = document.getElementById('road-width-slider');
+    const valueBox = document.getElementById('road-width-value');
+    if (slider && valueBox && roadMeshes[selectedRoadIndex].userData.width) {
+      slider.value = roadMeshes[selectedRoadIndex].userData.width;
+      valueBox.value = roadMeshes[selectedRoadIndex].userData.width;
+    }
+    // Listen for width changes and update mesh
+    if (slider && valueBox) {
+      // Remove previous listeners
+      slider.oninput = valueBox.oninput = null;
+      const updateWidth = (val) => {
+        const w = parseFloat(val);
+        if (!w || w < 0.01 || w > 0.2) return;
+        // Remove old mesh and dashed lines
+        const oldMesh = roadMeshes[selectedRoadIndex];
+        if (oldMesh._dashedLines) {
+          for (const l of oldMesh._dashedLines) if (scene.children.includes(l)) scene.remove(l);
+        }
+        scene.remove(oldMesh);
+        // Recreate mesh with new width
+        const curve = new THREE.CatmullRomCurve3(polylines[selectedRoadIndex]);
+        const newMesh = createRoadMeshFromSpline(curve, w, 100);
+        newMesh.userData.width = w;
+        scene.add(newMesh);
+        roadMeshes[selectedRoadIndex] = newMesh;
+        selectRoad(selectedRoadIndex, scene); // Reselect to update UI
+      };
+      slider.oninput = (e) => { valueBox.value = e.target.value; updateWidth(e.target.value); };
+      valueBox.oninput = (e) => { slider.value = e.target.value; updateWidth(e.target.value); };
+    }
   }
   updateRoadUI();
 }
