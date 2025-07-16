@@ -64,8 +64,3 @@ This project is an interactive 3D road and point cloud visualizer built with Thr
 - Only right mouse button adds points (left click is ignored for drawing).
 - Roads are rendered with realistic dark gray color and white dashed edge lines.
 - The edit mode is a placeholder for future enhancements.
-- The project is modular and easy to extend for more features (e.g., textures, terrain following, undo/redo, etc).
-
-## License
-
-MIT License
