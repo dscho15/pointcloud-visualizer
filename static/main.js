@@ -36,13 +36,31 @@ const axesLength = 10;
 const axesHelper = new THREE.AxesHelper(axesLength);
 scene.add(axesHelper);
 
-// Add a grid in the x-y plane (z=0), more visible
-const gridSize = 20;
-const gridDivisions = 40;
+// Remove previous gridHelper code
+// Create a grid that covers (0, 250) in x and (-100, 100) in y
+const gridSizeX = 250;
+const gridSizeY = 200;
+const gridDivisionsX = 250; // 1m per division in x
+const gridDivisionsY = 200; // 1m per division in y
 const gridColor = 0x888888;
-const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
-gridHelper.rotation.x = Math.PI / 2; // Make grid in x-y plane
+
+// Create a grid helper (centered at origin, square)
+const gridHelper = new THREE.GridHelper(gridSizeX, gridDivisionsX, gridColor, gridColor);
+gridHelper.rotation.x = Math.PI / 2; // x-y plane
+// Scale y to cover 200m (so grid is 250x200)
+gridHelper.scale.y = gridSizeY / gridSizeX;
+// Move grid so it covers (0,250) in x and (-100,100) in y
+// By default, grid is centered at (0,0), so shift by (gridSizeX/2, 0, 0)
+gridHelper.position.x = gridSizeX / 2;
 scene.add(gridHelper);
+
+// After adding gridHelper to the scene
+const showGridCheckbox = document.getElementById('show-grid-checkbox');
+if (showGridCheckbox) {
+  showGridCheckbox.addEventListener('change', (e) => {
+    gridHelper.visible = e.target.checked;
+  });
+}
 
 // Handle resizing
 window.addEventListener('resize', () => {

@@ -25,6 +25,16 @@
       <input id="road-width-value" type="number" min="1" max="2" step="0.01" value="1.5" style="width:40px; font-size:13px; vertical-align:middle; margin-left:4px;">
       <span style="margin-left:2px; vertical-align:middle;">m</span>
     </label>
+    <label style="margin-left:12px; font-size: 14px;">
+      <span style="vertical-align:middle;">Z Offset:</span>
+      <input id="z-offset-slider" type="range" min="-5" max="5" step="0.01" value="3" style="vertical-align:middle; width:80px; margin-left:4px;">
+      <input id="z-offset-value" type="number" min="-5" max="5" step="0.01" value="3" style="width:40px; font-size:13px; vertical-align:middle; margin-left:4px;">
+      <span style="margin-left:2px; vertical-align:middle;">m</span>
+    </label>
+    <label style="margin-left:12px; font-size: 14px;">
+      <input id="show-grid-checkbox" type="checkbox" checked style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Grid</span>
+    </label>
     <span id="road-status" style="margin-left: 10px;"></span>
   </div>
   <canvas id="webgl"></canvas>

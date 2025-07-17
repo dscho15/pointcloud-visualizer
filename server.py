@@ -1,11 +1,14 @@
+import numpy as np
 import json
 import random
 import asyncio
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
+from natsort import natsorted
 
 app = FastAPI()
 
@@ -34,14 +37,27 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
         print("Client disconnected")
-
+        
 async def broadcast_fake_data():
+    
+    i = 0
+    
     while True:
-        if clients:
+        
+        files = natsorted(list(Path("/home/daniel/Desktop/data-gathering/recordings").glob("interval_*.npy")))
+        
+        if clients and len(files) > 0:
+            
+            file = files[i % len(files)]
+            i += 1
+            
+            points = np.load(file)[:, :3]
+                                    
             pointcloud = {
                 "type": "pointcloud",
-                "points": [[random.uniform(-1, 1) for _ in range(3)] for _ in range(300)]
+                "points": points.tolist(),
             }
+            
             obb = {
                 "type": "obb",
                 "center": [random.uniform(-1, 1) for _ in range(3)],
@@ -52,14 +68,24 @@ async def broadcast_fake_data():
                     0, 0, 1
                 ]
             }
-            for ws in list(clients):
+            
+            to_remove = set()
+            
+            async def send_to_client(ws):
                 if ws.application_state == WebSocketState.CONNECTED:
                     try:
                         await ws.send_text(json.dumps(pointcloud))
                         await ws.send_text(json.dumps(obb))
                     except Exception as e:
                         print("Send failed:", e)
-        await asyncio.sleep(2)
+                        to_remove.add(ws)
+            
+            await asyncio.gather(*(send_to_client(ws) for ws in list(clients)))
+            
+            for ws in to_remove:
+                clients.discard(ws)
+                
+        await asyncio.sleep(0.1)
 
 @app.on_event("startup")
 async def startup_event():

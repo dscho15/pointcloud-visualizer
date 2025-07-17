@@ -2,6 +2,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 
 let currentRoadWidth = 0.06;
+let currentZOffset = 0;
 
 // Listen for slider and number input changes
 if (typeof window !== 'undefined') {
@@ -9,19 +10,42 @@ if (typeof window !== 'undefined') {
     const slider = document.getElementById('road-width-slider');
     const valueBox = document.getElementById('road-width-value');
     if (slider && valueBox) {
-      const sync = (val) => {
-        currentRoadWidth = parseFloat(val);
-        slider.value = currentRoadWidth;
-        valueBox.value = currentRoadWidth;
+      const sync = (val, from) => {
+        let floatVal = parseFloat(val) || 0;
+        currentRoadWidth = floatVal;
+        if (from !== 'slider') slider.value = floatVal;
+        if (from !== 'box') valueBox.value = floatVal;
       };
-      slider.addEventListener('input', e => sync(e.target.value));
-      valueBox.addEventListener('input', e => sync(e.target.value));
+      slider.addEventListener('input', e => sync(e.target.value, 'slider'));
+      valueBox.addEventListener('input', e => sync(e.target.value, 'box'));
+      valueBox.addEventListener('change', e => sync(e.target.value, 'box'));
+    }
+
+    // Z Offset controls
+    const zSlider = document.getElementById('z-offset-slider');
+    const zValueBox = document.getElementById('z-offset-value');
+    if (zSlider && zValueBox) {
+      const syncZ = (val, from) => {
+        // Always parse as float and update both fields
+        let floatVal = parseFloat(val) || 0;
+        currentZOffset = floatVal;
+        if (from !== 'slider') zSlider.value = floatVal;
+        if (from !== 'box') zValueBox.value = floatVal;
+      };
+      zSlider.addEventListener('input', e => syncZ(e.target.value, 'slider'));
+      zValueBox.addEventListener('input', e => syncZ(e.target.value, 'box'));
+      // Allow manual typing and pasting decimals
+      zValueBox.addEventListener('change', e => syncZ(e.target.value, 'box'));
     }
   });
 }
 
 export function getCurrentRoadWidth() {
   return currentRoadWidth;
+}
+
+export function getCurrentZOffset() {
+  return currentZOffset;
 }
 
 export function setupControls(camera, domElement) {
