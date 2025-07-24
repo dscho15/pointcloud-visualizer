@@ -21,22 +21,6 @@ if (typeof window !== 'undefined') {
       valueBox.addEventListener('change', e => sync(e.target.value, 'box'));
     }
 
-    // Z Offset controls
-    const zSlider = document.getElementById('z-offset-slider');
-    const zValueBox = document.getElementById('z-offset-value');
-    if (zSlider && zValueBox) {
-      const syncZ = (val, from) => {
-        // Always parse as float and update both fields
-        let floatVal = parseFloat(val) || 0;
-        currentZOffset = floatVal;
-        if (from !== 'slider') zSlider.value = floatVal;
-        if (from !== 'box') zValueBox.value = floatVal;
-      };
-      zSlider.addEventListener('input', e => syncZ(e.target.value, 'slider'));
-      zValueBox.addEventListener('input', e => syncZ(e.target.value, 'box'));
-      // Allow manual typing and pasting decimals
-      zValueBox.addEventListener('change', e => syncZ(e.target.value, 'box'));
-    }
   });
 }
 

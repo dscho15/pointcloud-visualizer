@@ -69,21 +69,135 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+
+
+
+// Add PC control: 
+const pcSelect = document.getElementById('pc-select');
+const pcControls = document.getElementById('pc-controls');
+const pcVisible = document.getElementById('pc-visible');
+const toggleBtn = document.getElementById('toggle-pc-controls');
+const pcX = document.getElementById('pc-x');
+const pcY = document.getElementById('pc-y');
+const pcZ = document.getElementById('pc-z');
+const pcRotZ = document.getElementById('pc-rot-z');
+
 // Hold references to dynamic objects
-let pointCloud = createPointCloud([]);
-scene.add(pointCloud);
+const pointClouds = {};
+
 
 // Listen for websocket data
 initWebSocket({
-  onPointsReceived: (points) => {
-    console.log('Received points:', points.length);
-    updatePointCloud(pointCloud, points);
+  onPointsReceived: ({points, detector_id}) => {
+    console.log('From detector: ',detector_id,', received points:', points.length);
+
+    if (!pointClouds[detector_id]) {
+      const pc = createPointCloud(points, detector_id);
+      pointClouds[detector_id] = pc;
+      scene.add(pc)
+      updatePointCloudDropdown(); 
+    }
+    else{
+      updatePointCloud(pointClouds[detector_id], points, detector_id);
+    }
+    
   },
   onOBBReceived: (obb) => {
     console.log('Received OBB:', obb);
     addOBB(scene, obb);
   },
 });
+
+
+let selectedPC = null;
+pcSelect.addEventListener('change', () => {
+  const detectorId = pcSelect.value;
+  if (!detectorId || !pointClouds[detectorId]) {
+    pcControls.style.display = 'none';
+    toggleBtn.style.display = 'none';
+    selectedPC = null;
+    // pcControlsVisible = false;
+    return;
+  }
+
+  selectedPC = pointClouds[detectorId];
+  // pcControlsVisible = true;
+  pcControls.style.display = 'block';
+  toggleBtn.style.display = 'inline-block';
+  toggleBtn.textContent = 'Hide Controls';
+
+  pcVisible.checked = selectedPC.visible;
+  pcX.value = selectedPC.position.x;
+  pcY.value = selectedPC.position.y;
+  pcZ.value = selectedPC.position.z;
+  pcRotZ.value = selectedPC.rotation.z;
+});
+// pcSelect.addEventListener('change', () => {
+//   const detectorId = pcSelect.value;
+//   if (!detectorId || !pointClouds[detectorId]) {
+//     pcControls.style.display = 'none';
+//     toggleBtn.style.display = 'none';
+//     selectedPC = null;
+//     return;
+//   }
+
+//   selectedPC = pointClouds[detectorId];
+//   pcControls.style.display = 'block';
+
+//   pcVisible.checked = selectedPC.visible;
+//   pcX.value = selectedPC.position.x;
+//   pcY.value = selectedPC.position.y;
+//   pcZ.value = selectedPC.position.z;
+//   pcRotZ.value = selectedPC.rotation.z;
+// });
+
+pcVisible.addEventListener('input', () => {
+  if (selectedPC) selectedPC.visible = pcVisible.checked;
+});
+pcX.addEventListener('input', () => {
+  if (selectedPC) selectedPC.position.x = parseFloat(pcX.value);
+});
+pcY.addEventListener('input', () => {
+  if (selectedPC) selectedPC.position.y = parseFloat(pcY.value);
+});
+pcZ.addEventListener('input', () => {
+  if (selectedPC) selectedPC.position.z = parseFloat(pcZ.value);
+});
+pcRotZ.addEventListener('input', () => {
+  if (selectedPC) selectedPC.rotation.z = parseFloat(pcRotZ.value);
+});
+
+toggleBtn.addEventListener('click', () => {
+  if (pcControls.style.display === 'none') {
+    pcControls.style.display = 'block';
+    toggleBtn.textContent = 'Hide Controls';
+  } 
+  else {
+    pcControls.style.display = 'none';
+    toggleBtn.textContent = 'Show Controls';
+  }
+});
+
+function updatePointCloudDropdown() {
+  pcSelect.innerHTML = '<option value="">-- Select Point Cloud --</option>';
+  for (const id in pointClouds) {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = `Detector ${id}`;
+    pcSelect.appendChild(option);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 function animate() {
   requestAnimationFrame(animate);

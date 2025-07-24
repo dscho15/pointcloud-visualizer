@@ -10,7 +10,7 @@ export function initWebSocket({ onPointsReceived, onOBBReceived }) {
       const data = JSON.parse(event.data);
 
       if (data.type === 'pointcloud') {
-        onPointsReceived(data.points);
+        onPointsReceived(data);
       } else if (data.type === 'obb') {
         onOBBReceived(data);
       }

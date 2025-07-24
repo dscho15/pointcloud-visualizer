@@ -56,7 +56,7 @@ function createKeybindsMenu() {
     <span style="color:#ffd700">R</span>: Reset Drawing<br>
     <span style="color:#ffd700">E</span>: Edit Road<br>
     <span style="color:#ffd700">D</span>: Delete Road<br>
-    <span style="color:#ffd700">Left Click</span>: Add Point<br>
+    <span style="color:#ffd700">Right Click</span>: Add Point<br>
     <span style="color:#ffd700">Double Click</span>: Finish Road<br>
     <hr style="border:1px solid #444; margin:8px 0;">
     <span style="font-size:13px; color:#aaa">You can close this menu with <b>?</b></span>

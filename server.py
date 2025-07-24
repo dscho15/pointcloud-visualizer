@@ -44,7 +44,7 @@ async def broadcast_fake_data():
     
     while True:
         
-        files = natsorted(list(Path("/home/daniel/Desktop/data-gathering/recordings").glob("interval_*.npy")))
+        files = natsorted(list(Path("./").glob("interval_*.npy")))
         
         if clients and len(files) > 0:
             
@@ -53,9 +53,17 @@ async def broadcast_fake_data():
             
             points = np.load(file)[:, :3]
                                     
-            pointcloud = {
+            pointcloud_0 = {
                 "type": "pointcloud",
+                "detector_id": 0,
                 "points": points.tolist(),
+            }
+            offset = np.array([2.0, 0.0, 0.0])  # Move it 2 units along X axis
+            points_offset = points + offset
+            pointcloud_1 = {
+                "type": "pointcloud",
+                "detector_id": 1,
+                "points": points_offset.tolist(),
             }
             
             obb = {
@@ -71,16 +79,17 @@ async def broadcast_fake_data():
             
             to_remove = set()
             
-            async def send_to_client(ws):
+            async def send_to_client(ws, detector_pc, detecor_obb):
                 if ws.application_state == WebSocketState.CONNECTED:
                     try:
-                        await ws.send_text(json.dumps(pointcloud))
-                        await ws.send_text(json.dumps(obb))
+                        await ws.send_text(json.dumps(detector_pc))
+                        await ws.send_text(json.dumps(detecor_obb))
                     except Exception as e:
                         print("Send failed:", e)
                         to_remove.add(ws)
             
-            await asyncio.gather(*(send_to_client(ws) for ws in list(clients)))
+            await asyncio.gather(*(send_to_client(ws, pointcloud_0, obb) for ws in list(clients)))
+            await asyncio.gather(*(send_to_client(ws, pointcloud_1, obb) for ws in list(clients)))
             
             for ws in to_remove:
                 clients.discard(ws)
