@@ -44,7 +44,7 @@ async def broadcast_fake_data():
     
     while True:
         
-        files = natsorted(list(Path("./").glob("interval_*.npy")))
+        files = natsorted(list(Path("./recording/interval_").glob("interval_*.npy")))
         
         if clients and len(files) > 0:
             
@@ -65,16 +65,19 @@ async def broadcast_fake_data():
                 "detector_id": 1,
                 "points": points_offset.tolist(),
             }
-            
-            obb = {
+            obb_0 = {
                 "type": "obb",
-                "center": [random.uniform(-1, 1) for _ in range(3)],
-                "size": [1.0, 0.5, 0.3],
-                "rotation": [
-                    1, 0, 0,
-                    0, 1, 0,
-                    0, 0, 1
-                ]
+                "boxes": [[1, 2, 0.15, 1.0, 0.5, 0.3, 0], [5, 2, 0.15, 1.0, 0.5, 0.3, 0],  [7, 2, 0.5, 0.3, 0.3, 1.0, 0]], # x,y,z, l,w,h, theta
+                "detector_id": 0, 
+                "class_ids": [0, 1, 2],
+                "track_ids": [0, 1, 2]
+            }
+            obb_1 = {
+                "type": "obb",
+                "boxes": [[2, 1, 0, 1.0, 0.5, 0.3, 0]], # x,y,z, h,w,d, theta
+                "detector_id": 1, 
+                "class_ids": [0],
+                "track_ids": [3]
             }
             
             to_remove = set()
@@ -88,8 +91,8 @@ async def broadcast_fake_data():
                         print("Send failed:", e)
                         to_remove.add(ws)
             
-            await asyncio.gather(*(send_to_client(ws, pointcloud_0, obb) for ws in list(clients)))
-            await asyncio.gather(*(send_to_client(ws, pointcloud_1, obb) for ws in list(clients)))
+            await asyncio.gather(*(send_to_client(ws, pointcloud_0, obb_0) for ws in list(clients)))
+            await asyncio.gather(*(send_to_client(ws, pointcloud_1, obb_1) for ws in list(clients)))
             
             for ws in to_remove:
                 clients.discard(ws)

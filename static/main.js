@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { initWebSocket } from './websocket.js';
 import { createPointCloud, updatePointCloud } from './pointcloud.js';
-import { addOBB } from './obb.js';
+// import { addOBB } from './obb.js';
 import { setupControls } from './controls.js';
 import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
+import { addOBBtoPointcloud } from './obb.js';
 
 const canvas = document.getElementById('webgl');
 const scene = new THREE.Scene();
@@ -36,11 +37,57 @@ const axesLength = 10;
 const axesHelper = new THREE.AxesHelper(axesLength);
 scene.add(axesHelper);
 
-// Remove previous gridHelper code
+
+// get satellite image: 
+// === Load satellite image as ground plane ===
+let satellitePlane = null; // declare globally
+const textureLoader = new THREE.TextureLoader();
+
+textureLoader.load('/static/uncropped.png', (texture) => {
+  const satWidth = 200;
+  const satHeight = 220;
+
+  const satGeometry = new THREE.PlaneGeometry(satWidth, satHeight);
+  const satMaterial = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 1.0,
+  });
+
+  satellitePlane = new THREE.Mesh(satGeometry, satMaterial);
+  satellitePlane.position.set(0, 0, -0.01);
+  scene.add(satellitePlane);
+});
+
+const showSatelliteCheckbox = document.getElementById('show-satellite');
+if (showSatelliteCheckbox) {
+  showSatelliteCheckbox.addEventListener('change', (e) => {
+    satellitePlane.visible = e.target.checked;
+  });
+}
+const satX = document.getElementById('sat-x');
+const satY = document.getElementById('sat-y');
+const satRotZ = document.getElementById('sat-rot-z');
+
+if (satX && satY) {
+  satX.addEventListener('input', () => {
+    if (satellitePlane) satellitePlane.position.x = parseFloat(satX.value);
+  });
+
+  satY.addEventListener('input', () => {
+    if (satellitePlane) satellitePlane.position.y = parseFloat(satY.value);
+  });
+}
+if (satRotZ) {
+  satRotZ.addEventListener('input', () => {
+    if (satellitePlane) satellitePlane.rotation.z = parseFloat(satRotZ.value);
+  });
+}
 // Create a grid that covers (0, 250) in x and (-100, 100) in y
-const gridSizeX = 250;
+const gridSizeX = 200;
 const gridSizeY = 200;
-const gridDivisionsX = 250; // 1m per division in x
+const gridDivisionsX = 200; // 1m per division in x
 const gridDivisionsY = 200; // 1m per division in y
 const gridColor = 0x888888;
 
@@ -48,10 +95,11 @@ const gridColor = 0x888888;
 const gridHelper = new THREE.GridHelper(gridSizeX, gridDivisionsX, gridColor, gridColor);
 gridHelper.rotation.x = Math.PI / 2; // x-y plane
 // Scale y to cover 200m (so grid is 250x200)
-gridHelper.scale.y = gridSizeY / gridSizeX;
+gridHelper.position.set(0, 0, 0);
+// gridHelper.scale.y = gridSizeY / gridSizeX;
 // Move grid so it covers (0,250) in x and (-100,100) in y
 // By default, grid is centered at (0,0), so shift by (gridSizeX/2, 0, 0)
-gridHelper.position.x = gridSizeX / 2;
+// gridHelper.position.x = gridSizeX / 2;
 scene.add(gridHelper);
 
 // After adding gridHelper to the scene
@@ -102,10 +150,15 @@ initWebSocket({
     }
     
   },
-  onOBBReceived: (obb) => {
-    console.log('Received OBB:', obb);
-    addOBB(scene, obb);
-  },
+  onOBBReceived: (obbData) => {
+    console.log(obbData.boxes.length,' objects detected in PC from detector ',obbData.detector_id);
+    const pc = pointClouds[obbData.detector_id];
+    if (pc) {
+      addOBBtoPointcloud(pc, obbData);
+    } else {
+      console.warn('No point cloud found for detector:', obbData.detector_id);
+    }
+  }
 });
 
 

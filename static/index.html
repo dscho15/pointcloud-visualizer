@@ -34,6 +34,8 @@
   </div>
   <div id="point-cloud-ui" style="
   position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
+  <!-- <label><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label> -->
+
   <label for="pc-select" style="font-size: 14px;"><strong>Point Cloud:</strong></label>
     <select id="pc-select" style="margin-left: 6px; font-size: 14px;">
       <option value="">-- Select Point Cloud --</option>
@@ -62,7 +64,11 @@
       </div>
     </div>
   </div>
-  
+  <div id="satellite-controls" style="position: absolute; top: 10px; right: 300px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+    <label>Sat X: <input id="sat-x" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
+    <label>Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label>
+    <label>Sat Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
+  </div>
   <canvas id="webgl"></canvas>
   <script type="module" src="/static/main.js"></script>
 </body>
