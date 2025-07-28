@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { initWebSocket } from './websocket.js';
 import { createPointCloud, updatePointCloud } from './pointcloud.js';
-// import { addOBB } from './obb.js';
+
 import { setupControls } from './controls.js';
-import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
+// import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
 import { addOBBtoPointcloud } from './obb.js';
 
 const canvas = document.getElementById('webgl');
@@ -20,9 +20,9 @@ renderer.setPixelRatio(window.devicePixelRatio);
 
 const controls = setupControls(camera, renderer.domElement);
 // Enable interactive road marking drawing
-enableRoadMarkingDrawing(scene, camera, renderer);
-// Setup road UI (selection, delete, new)
-setupRoadUI(scene, camera, renderer);
+// enableRoadMarkingDrawing(scene, camera, renderer);
+// // Setup road UI (selection, delete, new)
+// setupRoadUI(scene, camera, renderer);
 
 // Add better lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Softer ambient light
@@ -185,24 +185,7 @@ pcSelect.addEventListener('change', () => {
   pcZ.value = selectedPC.position.z;
   pcRotZ.value = selectedPC.rotation.z;
 });
-// pcSelect.addEventListener('change', () => {
-//   const detectorId = pcSelect.value;
-//   if (!detectorId || !pointClouds[detectorId]) {
-//     pcControls.style.display = 'none';
-//     toggleBtn.style.display = 'none';
-//     selectedPC = null;
-//     return;
-//   }
 
-//   selectedPC = pointClouds[detectorId];
-//   pcControls.style.display = 'block';
-
-//   pcVisible.checked = selectedPC.visible;
-//   pcX.value = selectedPC.position.x;
-//   pcY.value = selectedPC.position.y;
-//   pcZ.value = selectedPC.position.z;
-//   pcRotZ.value = selectedPC.rotation.z;
-// });
 
 pcVisible.addEventListener('input', () => {
   if (selectedPC) selectedPC.visible = pcVisible.checked;
@@ -227,12 +210,13 @@ toggleBtn.addEventListener('click', () => {
   } 
   else {
     pcControls.style.display = 'none';
-    toggleBtn.textContent = 'Show Controls';
+    toggleBtn.style.display = 'none';
+    // toggleBtn.textContent = 'Show Controls';
   }
 });
 
 function updatePointCloudDropdown() {
-  pcSelect.innerHTML = '<option value="">-- Select Point Cloud --</option>';
+  pcSelect.innerHTML = '<option value="">Select Point Cloud</option>';
   for (const id in pointClouds) {
     const option = document.createElement('option');
     option.value = id;
@@ -240,15 +224,6 @@ function updatePointCloudDropdown() {
     pcSelect.appendChild(option);
   }
 }
-
-
-
-
-
-
-
-
-
 
 
 

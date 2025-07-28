@@ -15,7 +15,7 @@
   </script>
 </head>
 <body>
-  <div id="road-ui" style="position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
+  <!-- <div id="road-ui" style="position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
     <button id="new-road-btn">New Road</button>
     <button id="delete-road-btn" disabled>Delete Road</button>
     <button id="edit-road-btn" disabled>Edit Road</button>
@@ -25,50 +25,35 @@
       <input id="road-width-value" type="number" min="1" max="2" step="0.01" value="1.5" style="width:40px; font-size:13px; vertical-align:middle; margin-left:4px;">
       <span style="margin-left:2px; vertical-align:middle;">m</span>
     </label>
-
-    <label style="margin-left:12px; font-size: 14px;">
-      <input id="show-grid-checkbox" type="checkbox" checked style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Grid</span>
-    </label>
     <span id="road-status" style="margin-left: 10px;"></span>
-  </div>
+  </div> -->
   <div id="point-cloud-ui" style="
-  position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
+  position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
   <!-- <label><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label> -->
-
-  <label for="pc-select" style="font-size: 14px;"><strong>Point Cloud:</strong></label>
-    <select id="pc-select" style="margin-left: 6px; font-size: 14px;">
-      <option value="">-- Select Point Cloud --</option>
-      <!-- Dynamically populated -->
-    </select>
-
-    <button id="toggle-pc-controls" style="margin-top: 8px; font-size: 13px;">Hide Controls</button>
-
   
+  <label for="pc-select" style="font-size: 14px;"><strong>Edit Point Cloud:</strong></label>
+    <select id="pc-select" style="margin-left: 6px; font-size: 14px;">
+      <option value="">Select Point Cloud</option>
+    </select>
+    <button id="toggle-pc-controls" style="margin-top: 8px; font-size: 13px;">Hide Controls</button>
     <div id="pc-controls" style="display: none; margin-top: 10px;">
-      <label>
-        <input id="pc-visible" type="checkbox" checked />
-        Visible
-      </label>
-      <div>
-        <label>X: <input id="pc-x" type="range" min="-10" max="10" step="0.1" value="0"></label>
-      </div>
-      <div>
-        <label>Y: <input id="pc-y" type="range" min="-10" max="10" step="0.1" value="0"></label>
-      </div>
-      <div>
-        <label>Z: <input id="pc-z" type="range" min="-10" max="10" step="0.1" value="0"></label>
-      </div>
-      <div>
-        <label>Rotate Z: <input id="pc-rot-z" type="range" min="0" max="6.28" step="0.01" value="0"></label>
-      </div>
+      <label style="font-size: 14px;"> <input id="pc-visible" type="checkbox" checked />Visible</label>
+      <div><label style="font-size: 14px;">X: <input id="pc-x" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
+      <div><label style="font-size: 14px;">Y: <input id="pc-y" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
+      <div><label style="font-size: 14px;">Z: <input id="pc-z" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
+      <div><label style="font-size: 14px;">Theta: <input id="pc-rot-z" type="range" min="0" max="6.28" step="0.01" value="0"></label></div>
     </div>
   </div>
-  <div id="satellite-controls" style="position: absolute; top: 10px; right: 300px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
-    <label>Sat X: <input id="sat-x" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
-    <label>Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label>
-    <label>Sat Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
+  <div id="satellite-controls" style="position: absolute; top: 10px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+    <label style="font-size: 14px;">
+      <input id="show-grid-checkbox" type="checkbox" checked style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Grid</span>
+    </label><br/>
+    <label style="font-size: 14px;">Sat X: <input id="sat-x" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
+    <label style="font-size: 14px;">Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
+    <label style="font-size: 14px;">Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
   </div>
+
   <canvas id="webgl"></canvas>
   <script type="module" src="/static/main.js"></script>
 </body>
