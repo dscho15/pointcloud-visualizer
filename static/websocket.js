@@ -1,4 +1,6 @@
-export function initWebSocket({ onPointsReceived, onOBBReceived }) {
+
+
+export function initWebSocket({ onPointsReceived, onOBBReceived, onHeatmapReceived, onHeadingReceived, onAvgSpeedRecieved, onMaxSpeedRecieved }) {
   const socket = new WebSocket(`ws://${window.location.host}/ws`);
 
   socket.addEventListener('open', () => {
@@ -13,6 +15,17 @@ export function initWebSocket({ onPointsReceived, onOBBReceived }) {
         onPointsReceived(data);
       } else if (data.type === 'obb') {
         onOBBReceived(data);
+      } else if (data.type === 'heatmap') {
+        onHeatmapReceived(data.data)
+      }
+      else if (data.type === 'heading') {
+        onHeadingReceived(data)
+      }
+      else if (data.type === 'avg_speed_map') {
+        onAvgSpeedRecieved(data)
+      }
+      else if (data.type === 'max_speed_map') {
+        onMaxSpeedRecieved(data)
       }
     } catch (err) {
       console.error('[WebSocket] JSON error:', err);

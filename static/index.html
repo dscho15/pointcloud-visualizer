@@ -13,20 +13,11 @@
       }
     }
   </script>
+
+  <script type="module" src="/static/main.js"></script>
 </head>
 <body>
-  <!-- <div id="road-ui" style="position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
-    <button id="new-road-btn">New Road</button>
-    <button id="delete-road-btn" disabled>Delete Road</button>
-    <button id="edit-road-btn" disabled>Edit Road</button>
-    <label style="margin-left:12px; font-size: 14px;">
-      <span style="vertical-align:middle;">Total Width:</span>
-      <input id="road-width-slider" type="range" min="1" max="2" step="0.01" value="1.5" style="vertical-align:middle; width:80px; margin-left:4px;">
-      <input id="road-width-value" type="number" min="1" max="2" step="0.01" value="1.5" style="width:40px; font-size:13px; vertical-align:middle; margin-left:4px;">
-      <span style="margin-left:2px; vertical-align:middle;">m</span>
-    </label>
-    <span id="road-status" style="margin-left: 10px;"></span>
-  </div> -->
+  
   <div id="point-cloud-ui" style="
   position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
   <!-- <label><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label> -->
@@ -53,8 +44,49 @@
     <label style="font-size: 14px;">Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
     <label style="font-size: 14px;">Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
   </div>
+  <div id="heatmap-controls" style="position: absolute; top: 70px; left: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+    <label style="font-size: 14px;">
+      <input id="show-heatmap-checkbox" type="checkbox" checked style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Heatmap</span>
+    </label><br/>
+    <label style="font-size: 14px;">
+      <input id="show-heading-checkbox" type="checkbox" checked style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Heading</span>
+    </label><br/>
+    <label style="font-size: 14px;">
+      <input id="show-maxspeed-checkbox" type="checkbox" style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Max Speed</span>
+    </label><br/>
+    <label style="font-size: 14px;">
+      <input id="show-avgspeed-checkbox" type="checkbox" style="vertical-align:middle;">
+      <span style="vertical-align:middle;">Show Avg Speed</span>
+    </label><br/>
+  </div>
+  <div style="position:absolute; left:40px; top:200px; background: #333; color: white; padding: 10px; border-radius: 8px; ">
+    <div>130 km/h</div>
+    <div style="margin-top: 60px;">25</div>
+    <div style="margin-top: 60px;">0</div>
+  </div>
+  <div id="speed-legend" style="position:absolute; left:90px; top:250px; width:20px; height:150px;
+  background: linear-gradient(to top, red, blue); border:1px solid #ccc;">
+</div>
 
-  <canvas id="webgl"></canvas>
-  <script type="module" src="/static/main.js"></script>
+ 
+  <!-- <div id="road-ui" style="position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
+    <button id="new-road-btn">New Road</button>
+    <button id="delete-road-btn" disabled>Delete Road</button>
+    <button id="edit-road-btn" disabled>Edit Road</button>
+    <label style="margin-left:12px; font-size: 14px;">
+      <span style="vertical-align:middle;">Total Width:</span>
+      <input id="road-width-slider" type="range" min="1" max="2" step="0.01" value="1.5" style="vertical-align:middle; width:80px; margin-left:4px;">
+      <input id="road-width-value" type="number" min="1" max="2" step="0.01" value="1.5" style="width:40px; font-size:13px; vertical-align:middle; margin-left:4px;">
+      <span style="margin-left:2px; vertical-align:middle;">m</span>
+    </label>
+    <span id="road-status" style="margin-left: 10px;"></span>
+  </div> -->
+
+  <!-- <canvas id="webgl"></canvas> -->
+  <canvas id="webgl" style="display: block;"></canvas>
+  
 </body>
 </html>
