@@ -63,7 +63,7 @@ textureLoader.load('/static/uncropped.png', (texture) => {
 const showSatelliteCheckbox = document.getElementById('show-satellite');
 if (showSatelliteCheckbox) {
   showSatelliteCheckbox.addEventListener('change', (e) => {
-    satellitePlane.visible = e.target.checked;
+    if (satellitePlane) satellitePlane.visible = e.target.checked;
   });
 }
 const satX = document.getElementById('sat-x');

@@ -20,7 +20,6 @@
   
   <div id="point-cloud-ui" style="
   position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
-  <!-- <label><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label> -->
   
   <label for="pc-select" style="font-size: 14px;"><strong>Edit Point Cloud:</strong></label>
     <select id="pc-select" style="margin-left: 6px; font-size: 14px;">
@@ -35,7 +34,8 @@
       <div><label style="font-size: 14px;">Theta: <input id="pc-rot-z" type="range" min="0" max="6.28" step="0.01" value="0"></label></div>
     </div>
   </div>
-  <div id="satellite-controls" style="position: absolute; top: 10px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+  <div id="satellite-controls" style="position: absolute; bottom: 10px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+    <label style="font-size: 14px;"><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label><br/>
     <label style="font-size: 14px;">
       <input id="show-grid-checkbox" type="checkbox" checked style="vertical-align:middle;">
       <span style="vertical-align:middle;">Show Grid</span>
@@ -44,7 +44,7 @@
     <label style="font-size: 14px;">Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
     <label style="font-size: 14px;">Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
   </div>
-  <div id="heatmap-controls" style="position: absolute; top: 70px; left: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
+  <div id="heatmap-controls" style="position: absolute; top: 150px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
     <label style="font-size: 14px;">
       <input id="show-heatmap-checkbox" type="checkbox" checked style="vertical-align:middle;">
       <span style="vertical-align:middle;">Show Heatmap</span>
