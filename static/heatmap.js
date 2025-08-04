@@ -20,11 +20,15 @@ const arr_head_len = 0.1;
 const arr_head_w = 0.1
 
 
-export function updateHeading({ width, _, data }, headingVisible, scene) {
+export function updateHeading(heading_data, headingVisible, scene) {
     // Clear existing arrows
     headingArrows.forEach(arrow => scene.remove(arrow));
     headingArrows.length = 0;
 
+    // If no data provided, just clear arrows
+    if (!heading_data || !heading_data.data) return;
+
+    const { width, data } = heading_data;
     const worldMin = -100;
     const resolution = 0.25;
 

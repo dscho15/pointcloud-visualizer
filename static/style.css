@@ -1,9 +1,109 @@
 body {
   margin: 0;
   overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
 canvas {
   display: block;
   width: 100vw;
   height: 100vh;
+}
+
+/* Control panel styling */
+.control-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.control-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Custom scrollbar for the control panel */
+#main-control-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#main-control-panel::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+#main-control-panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 4px;
+}
+
+#main-control-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* Range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: #555;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #4CAF50;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #4CAF50;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* Button hover effects */
+button:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Special styling for satellite origin buttons */
+#set-origin-mode-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+}
+
+#reset-satellite-btn:hover {
+  background: #777 !important;
+}
+
+/* Crosshair cursor animation */
+.crosshair-cursor {
+  cursor: crosshair !important;
+}
+
+/* Origin mode highlight */
+.origin-mode-active {
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5) !important;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px rgba(255, 152, 0, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 152, 0, 0.7); }
+  100% { box-shadow: 0 0 10px rgba(255, 152, 0, 0.3); }
 }

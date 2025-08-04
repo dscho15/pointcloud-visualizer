@@ -18,58 +18,224 @@
 </head>
 <body>
   
-  <div id="point-cloud-ui" style="
-  position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif; width: max-content;">    
-  
-  <label for="pc-select" style="font-size: 14px;"><strong>Edit Point Cloud:</strong></label>
-    <select id="pc-select" style="margin-left: 6px; font-size: 14px;">
-      <option value="">Select Point Cloud</option>
-    </select>
-    <button id="toggle-pc-controls" style="margin-top: 8px; font-size: 13px;">Hide Controls</button>
-    <div id="pc-controls" style="display: none; margin-top: 10px;">
-      <label style="font-size: 14px;"> <input id="pc-visible" type="checkbox" checked />Visible</label>
-      <div><label style="font-size: 14px;">X: <input id="pc-x" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
-      <div><label style="font-size: 14px;">Y: <input id="pc-y" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
-      <div><label style="font-size: 14px;">Z: <input id="pc-z" type="range" min="-10" max="10" step="0.1" value="0"></label></div>
-      <div><label style="font-size: 14px;">Theta: <input id="pc-rot-z" type="range" min="0" max="6.28" step="0.01" value="0"></label></div>
+  <!-- Unified Left Control Panel -->
+  <div id="main-control-panel" style="
+    position: fixed; 
+    top: 10px; 
+    left: 10px; 
+    width: 280px; 
+    max-height: calc(100vh - 20px); 
+    overflow-y: auto; 
+    z-index: 10; 
+    background: rgba(40,40,40,0.95); 
+    color: #fff; 
+    padding: 15px; 
+    border-radius: 8px; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+  ">
+    
+    <!-- Point Cloud Controls Section -->
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #4CAF50; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Point Cloud Controls</h3>
+      
+      <label for="pc-select" style="font-size: 14px; display: block; margin-bottom: 5px;"><strong>Select Point Cloud:</strong></label>
+      <select id="pc-select" style="width: 100%; margin-bottom: 10px; padding: 5px; font-size: 14px; background: #555; color: white; border: 1px solid #666; border-radius: 4px;">
+        <option value="">Select Point Cloud</option>
+      </select>
+      
+      <button id="toggle-pc-controls" style="width: 100%; margin-bottom: 10px; padding: 6px; font-size: 13px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Show Controls</button>
+      
+      <div id="pc-controls" style="display: none; margin-bottom: 15px;">
+        <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+          <input id="pc-visible" type="checkbox" checked style="margin-right: 8px;" />
+          Visible
+        </label>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 14px; display: block; margin-bottom: 2px;">X Position:</label>
+          <input id="pc-x" type="range" min="-10" max="10" step="0.1" value="0" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 14px; display: block; margin-bottom: 2px;">Y Position:</label>
+          <input id="pc-y" type="range" min="-10" max="10" step="0.1" value="0" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 14px; display: block; margin-bottom: 2px;">Z Position:</label>
+          <input id="pc-z" type="range" min="-10" max="10" step="0.1" value="0" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 14px; display: block; margin-bottom: 2px;">Rotation (Theta):</label>
+          <input id="pc-rot-z" type="range" min="0" max="6.28" step="0.01" value="0" style="width: 100%;">
+        </div>
+      </div>
     </div>
+
+    <!-- Satellite Controls Section -->
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #FF9800; border-bottom: 2px solid #FF9800; padding-bottom: 5px;">Satellite & Grid</h3>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+        <input type="checkbox" id="show-satellite" checked style="margin-right: 8px;">
+        Show Satellite Image
+      </label>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+        <input id="show-grid-checkbox" type="checkbox" checked style="margin-right: 8px;">
+        Show Grid
+      </label>
+
+      <!-- Satellite Origin Positioning -->
+      <div style="margin-bottom: 12px; padding: 8px; background: rgba(255,152,0,0.1); border-radius: 4px; border-left: 3px solid #FF9800;">
+        <button id="set-satellite-origin-btn" style="
+          width: 100%; 
+          padding: 8px; 
+          font-size: 14px; 
+          background: #FF9800; 
+          color: white; 
+          border: none; 
+          border-radius: 4px; 
+          cursor: pointer;
+          margin-bottom: 8px;
+        ">📍 Set Satellite Origin</button>
+        
+        <div id="origin-mode-status" style="
+          font-size: 12px; 
+          color: #FF9800; 
+          text-align: center; 
+          display: none;
+          margin-bottom: 8px;
+          font-weight: bold;
+        ">Click on satellite to set new origin</div>
+        
+        <button id="reset-satellite-origin-btn" style="
+          width: 100%; 
+          padding: 6px; 
+          font-size: 12px; 
+          background: #666; 
+          color: white; 
+          border: none; 
+          border-radius: 4px; 
+          cursor: pointer;
+        ">Reset to Center</button>
+      </div>
+      
+      <!-- Manual Position Controls -->
+      <div style="margin-bottom: 8px;">
+        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Satellite X:</label>
+        <input id="sat-x" type="range" min="-200" max="200" step="1" value="0" style="width: 100%;">
+      </div>
+      
+      <div style="margin-bottom: 8px;">
+        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Satellite Y:</label>
+        <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" style="width: 100%;">
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Satellite Rotation:</label>
+        <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0" style="width: 100%;">
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Satellite Scale:</label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; color: #ccc;">0.9</span>
+          <input type="range" id="sat-scale" min="0.9" max="1.0" step="0.01" value="1.0" style="flex: 1;">
+          <span style="font-size: 12px; color: #ccc;">1.0</span>
+        </div>
+        <div style="text-align: center; font-size: 12px; color: #FF9800; margin-top: 2px;">
+          <span id="sat-scale-value">1.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualization Controls Section -->
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #F44336; border-bottom: 2px solid #F44336; padding-bottom: 5px;">Visualization Options</h3>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+        <input id="show-heatmap-checkbox" type="checkbox" checked style="margin-right: 8px;">
+        Show Heatmap
+      </label>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+        <input id="show-heading-checkbox" type="checkbox" checked style="margin-right: 8px;">
+        Show Heading Arrows
+      </label>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
+        <input id="show-maxspeed-checkbox" type="checkbox" style="margin-right: 8px;">
+        Show Max Speed
+      </label>
+      
+      <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 15px;">
+        <input id="show-avgspeed-checkbox" type="checkbox" style="margin-right: 8px;">
+        Show Avg Speed
+      </label>
+    </div>
+
+    <!-- Speed Legend Section -->
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #9C27B0; border-bottom: 2px solid #9C27B0; padding-bottom: 5px;">Speed Legend</h3>
+      
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; flex-direction: column; font-size: 12px; text-align: right;">
+          <div>130 km/h</div>
+          <div style="margin-top: 45px;">65 km/h</div>
+          <div style="margin-top: 45px;">0 km/h</div>
+        </div>
+        <div id="speed-legend" style="
+          width: 20px; 
+          height: 120px;
+          background: linear-gradient(to top, #FF0000, #FFFF00, #00FF00, #0000FF); 
+          border: 1px solid #ccc;
+          border-radius: 2px;
+        "></div>
+      </div>
+    </div>
+
+    <!-- Settings Management Section -->
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #2196F3; border-bottom: 2px solid #2196F3; padding-bottom: 5px;">Settings Management</h3>
+      
+      <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+        <button id="export-settings-btn" style="flex: 1; padding: 6px; font-size: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">📥 Export</button>
+        <button id="save-to-api-btn" style="flex: 1; padding: 6px; font-size: 12px; background: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer;">☁️ Save</button>
+      </div>
+      
+      <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+        <input type="file" id="import-settings-file" accept=".json" style="display: none;">
+        <button id="import-settings-btn" style="flex: 1; padding: 6px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">📤 Import</button>
+        <button id="load-from-api-btn" style="flex: 1; padding: 6px; font-size: 12px; background: #9C27B0; color: white; border: none; border-radius: 4px; cursor: pointer;">☁️ Load</button>
+      </div>
+      
+      <div style="text-align: center; margin-top: 8px;">
+        <span id="settings-status" style="font-size: 11px; color: #ccc;">Ready</span>
+      </div>
+    </div>
+
+    <!-- Road Controls Section (Currently Disabled) -->
+    <!-- 
+    <div class="control-section">
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #607D8B; border-bottom: 2px solid #607D8B; padding-bottom: 5px;">Road Controls</h3>
+      
+      <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+        <button id="new-road-btn" style="flex: 1; padding: 6px; font-size: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">New Road</button>
+        <button id="delete-road-btn" disabled style="flex: 1; padding: 6px; font-size: 12px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+        <button id="edit-road-btn" disabled style="flex: 1; padding: 6px; font-size: 12px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
+      </div>
+      
+      <div style="margin-bottom: 8px;">
+        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Road Width:</label>
+        <input id="road-width-slider" type="range" min="1" max="2" step="0.01" value="1.5" style="width: 70%;">
+        <input id="road-width-value" type="number" min="1" max="2" step="0.01" value="1.5" style="width: 25%; margin-left: 5px; font-size: 12px;">
+      </div>
+      
+      <span id="road-status" style="font-size: 12px; color: #ccc;"></span>
+    </div>
+    -->
+    
   </div>
-  <div id="satellite-controls" style="position: absolute; bottom: 10px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
-    <label style="font-size: 14px;"><input type="checkbox" id="show-satellite" checked> Show Satellite Image</label><br/>
-    <label style="font-size: 14px;">
-      <input id="show-grid-checkbox" type="checkbox" checked style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Grid</span>
-    </label><br/>
-    <label style="font-size: 14px;">Sat X: <input id="sat-x" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
-    <label style="font-size: 14px;">Sat Y: <input id="sat-y" type="range" min="-200" max="200" step="1" value="0" /></label><br/>
-    <label style="font-size: 14px;">Theta: <input type="range" id="sat-rot-z" min="-3.14" max="3.14" step="0.01" value="0"></label>
-  </div>
-  <div id="heatmap-controls" style="position: absolute; top: 150px; right: 10px; background: #333; color: white; padding: 10px; border-radius: 8px; z-index: 20;">
-    <label style="font-size: 14px;">
-      <input id="show-heatmap-checkbox" type="checkbox" checked style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Heatmap</span>
-    </label><br/>
-    <label style="font-size: 14px;">
-      <input id="show-heading-checkbox" type="checkbox" checked style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Heading</span>
-    </label><br/>
-    <label style="font-size: 14px;">
-      <input id="show-maxspeed-checkbox" type="checkbox" style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Max Speed</span>
-    </label><br/>
-    <label style="font-size: 14px;">
-      <input id="show-avgspeed-checkbox" type="checkbox" style="vertical-align:middle;">
-      <span style="vertical-align:middle;">Show Avg Speed</span>
-    </label><br/>
-  </div>
-  <div style="position:absolute; left:40px; top:200px; background: #333; color: white; padding: 10px; border-radius: 8px; ">
-    <div>130 km/h</div>
-    <div style="margin-top: 60px;">25</div>
-    <div style="margin-top: 60px;">0</div>
-  </div>
-  <div id="speed-legend" style="position:absolute; left:90px; top:250px; width:20px; height:150px;
-  background: linear-gradient(to top, red, blue); border:1px solid #ccc;">
-</div>
 
  
   <!-- <div id="road-ui" style="position: absolute; top: 60px; left: 10px; z-index: 10; background: rgba(34,34,34,0.8); color: #fff; padding: 10px; border-radius: 6px; font-family: sans-serif;">
