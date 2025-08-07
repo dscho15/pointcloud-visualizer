@@ -16,7 +16,6 @@ export function initWebSocket({ onPointsReceived, onOBBReceived, onHeatmapReceiv
         // console.log("Recieved Pointcloud, from detector: ", data.detector_id, ", Type: ", data.pc_type)
         onPointsReceived(data);
       } else if (data.type === 'obb') {
-        console.log("Recieved Object Track")
         onOBBReceived(data);
       } else if (data.type === 'heatmap') {
         onHeatmapReceived(data.data)

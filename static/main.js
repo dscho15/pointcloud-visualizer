@@ -54,19 +54,6 @@ class PointCloudApp {
         // Auto-save settings when changes occur (optional)
         this.setupAutoSave();
 
-        // enableRoadMarkingDrawing(
-        //     this.sceneManager.getScene(),
-        //     this.sceneManager.getCamera(),
-        //     this.sceneManager.getRenderer()
-        // );
-
-        // setupRoadUI(
-        //     this.sceneManager.getScene(),
-        //     this.sceneManager.getCamera(),
-        //     this.sceneManager.getRenderer()
-        // );
-
-
     }
 
     setupSatelliteCallback() {
@@ -115,7 +102,6 @@ class PointCloudApp {
                         data.pc_type === "background"
                     ) 
                     {
-                        console.log("Updating pc for det: ", data.detector_id, ", type: ", data.pc_type);
                         updatePointCloud(
                             this.pointClouds[data.detector_id][data.pc_type],
                             data.points,
@@ -143,12 +129,10 @@ class PointCloudApp {
             },
 
             onAvgSpeedRecieved: (speed_data) => {
-                console.log("Received avg speed data");
                 updateAvgSpeed(speed_data, objects.avgSpeedTexture);
             },
 
             onMaxSpeedRecieved: (speed_data) => {
-                console.log("Received max speed data");
                 updateMaxSpeed(speed_data, objects.maxSpeedTexture);
             },
         });
