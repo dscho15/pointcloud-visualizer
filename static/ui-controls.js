@@ -3,7 +3,7 @@ import { updateHeading } from './heatmap.js';
 import { satelliteOriginController } from './satellite-origin.js';
 import { settingsManager } from './settings-manager.js';
 
-let selectedPC = null;
+let selectedPCs = null;
 let pointClouds = {};
 let satellitePlane = null;
 let gridHelper = null;
@@ -50,51 +50,75 @@ function setupPointCloudControls() {
     if (!detectorId || !pointClouds[detectorId]) {
       pcControls.style.display = 'none';
       toggleBtn.style.display = 'none';
-      selectedPC = null;
+      selectedPCs = null;
       return;
     }
 
-    selectedPC = pointClouds[detectorId];
+    selectedPCs = pointClouds[detectorId];
     pcControls.style.display = 'block';
     toggleBtn.style.display = 'inline-block';
     toggleBtn.textContent = 'Hide Controls';
 
     // Update UI values to match selected point cloud
-    pcVisible.checked = selectedPC.visible;
-    pcX.value = selectedPC.position.x;
-    pcY.value = selectedPC.position.y;
-    pcZ.value = selectedPC.position.z;
-    pcRotZ.value = selectedPC.rotation.z;
+    for (var pc in selectedPCs) {
+      pcVisible.checked = pc.visible;
+      pcX.value = pc.position.x;
+      pcY.value = pc.position.y;
+      pcZ.value = pc.position.z;
+      pcRotZ.value = pc.rotation.z;
+    }
+    
   });
 
   // Point cloud property controls
   if (pcVisible) {
     pcVisible.addEventListener('input', () => {
-      if (selectedPC) selectedPC.visible = pcVisible.checked;
+      if (selectedPCs) {
+        for (var pc in selectedPCs) {
+          pc.visible = pcVisible.checked;
+        }
+      }
     });
   }
 
   if (pcX) {
     pcX.addEventListener('input', () => {
-      if (selectedPC) selectedPC.position.x = parseFloat(pcX.value);
+      if (selectedPCs) {
+        for (var pc in selectedPCs) {
+          pc.position.x = parseFloat(pcX.value);
+        }
+      }
+ 
     });
   }
 
   if (pcY) {
     pcY.addEventListener('input', () => {
-      if (selectedPC) selectedPC.position.y = parseFloat(pcY.value);
+      if (selectedPCs) {
+        for (var pc in selectedPCs) {
+          pc.position.y = parseFloat(pcY.value);
+        }
+      }
     });
   }
 
   if (pcZ) {
     pcZ.addEventListener('input', () => {
-      if (selectedPC) selectedPC.position.z = parseFloat(pcZ.value);
+      if (selectedPCs) {
+        for (var pc in selectedPCs) {
+          pc.position.z = parseFloat(pcZ.value);
+        }
+      }
     });
   }
 
   if (pcRotZ) {
     pcRotZ.addEventListener('input', () => {
-      if (selectedPC) selectedPC.rotation.z = parseFloat(pcRotZ.value);
+      if (selectedPCs) {
+        for (var pc in selectedPCs) {
+          pc.rotation.z = parseFloat(pcRotZ.value);
+        }
+      }
     });
   }
 

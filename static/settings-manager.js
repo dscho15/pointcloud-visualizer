@@ -3,15 +3,15 @@ import { satelliteOriginController } from './satellite-origin.js';
 
 class SettingsManager {
   constructor() {
-    this.pointClouds = {};
+    this.pointCloudSets = {};
     this.scene = null;
     this.sceneObjects = {};
   }
 
-  initialize(scene, objects, pointClouds) {
+  initialize(scene, objects, pointCloudSets) {
     this.scene = scene;
     this.sceneObjects = objects;
-    this.pointClouds = pointClouds;
+    this.pointCloudSets = pointCloudSets;
   }
 
   // Export all current settings
@@ -34,24 +34,26 @@ class SettingsManager {
   exportPointCloudSettings() {
     const pcSettings = {};
     
-    for (const [id, pointCloud] of Object.entries(this.pointClouds)) {
-      if (pointCloud) {
+    for (const [id, pointClouds] of Object.entries(this.pointCloudSets)) {
+      if (pointClouds) {
+        const type = "foreground"; // expecting the settings to be the same for foreground and background
+
         pcSettings[id] = {
-          visible: pointCloud.visible,
+          visible: pointClouds[type].visible,
           position: {
-            x: pointCloud.position.x,
-            y: pointCloud.position.y,
-            z: pointCloud.position.z
+            x: pointClouds[type].position.x,
+            y: pointClouds[type].position.y,
+            z: pointClouds[type].position.z
           },
           rotation: {
-            x: pointCloud.rotation.x,
-            y: pointCloud.rotation.y,
-            z: pointCloud.rotation.z
+            x: pointClouds[type].rotation.x,
+            y: pointClouds[type].rotation.y,
+            z: pointClouds[type].rotation.z
           },
           scale: {
-            x: pointCloud.scale.x,
-            y: pointCloud.scale.y,
-            z: pointCloud.scale.z
+            x: pointClouds[type].scale.x,
+            y: pointClouds[type].scale.y,
+            z: pointClouds[type].scale.z
           }
         };
       }
@@ -231,7 +233,7 @@ class SettingsManager {
   // Import point cloud settings
   importPointCloudSettings(pcSettings) {
     for (const [id, settings] of Object.entries(pcSettings)) {
-      const pointCloud = this.pointClouds[id];
+      const pointCloud = this.pointCloudSets[id];
       if (pointCloud && settings) {
         pointCloud.visible = settings.visible;
         pointCloud.position.set(settings.position.x, settings.position.y, settings.position.z);

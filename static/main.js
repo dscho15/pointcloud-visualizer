@@ -6,6 +6,7 @@ import { addOBBtoPointcloud } from './obb.js';
 import { SceneManager } from './scene-manager.js';
 import { initUIControls, updatePointCloudDropdown, getHeadingVisible, setSatellitePlane } from './ui-controls.js';
 import { settingsManager } from './settings-manager.js';
+import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
 
 // Initialize the application
 class PointCloudApp {
@@ -13,7 +14,7 @@ class PointCloudApp {
     this.canvas = document.getElementById('webgl');
     this.sceneManager = new SceneManager(this.canvas);
     this.pointClouds = {};
-    
+    this.foreground = 1;
     this.init();
   }
 
@@ -50,6 +51,20 @@ class PointCloudApp {
     
     // Auto-save settings when changes occur (optional)
     this.setupAutoSave();
+
+    enableRoadMarkingDrawing(
+      this.sceneManager.getScene(),
+      this.sceneManager.getCamera(),
+      this.sceneManager.getRenderer()
+    );
+
+    setupRoadUI(
+      this.sceneManager.getScene(),
+      this.sceneManager.getCamera(),
+      this.sceneManager.getRenderer()
+    );
+
+ 
   }
 
   setupSatelliteCallback() {
@@ -70,19 +85,38 @@ class PointCloudApp {
     const objects = this.sceneManager.getObjects();
 
     initWebSocket({
-      onPointsReceived: ({ points, detector_id }) => {
-        if (!this.pointClouds[detector_id]) {
-          const pc = createPointCloud(points, detector_id);
-          this.pointClouds[detector_id] = pc;
-          scene.add(pc);
+      onPointsReceived: (data) => {
+
+        if (!this.pointClouds[data.detector_id]) {
+          
+          if (data.pc_type === "foreground") {
+            console.log("FIRST: foreground is set, backrgound is set to be empty")
+            this.pointClouds[data.detector_id] = {
+            foreground: createPointCloud(data.points),
+            background: createPointCloud([]),
+            };
+          }
+          else {
+            console.log("FIRST: backrgound is set, backrgound is set to be empty")
+            this.pointClouds[data.detector_id] = {
+            foreground: createPointCloud([]),
+            background: createPointCloud(data.points),
+            };
+
+          }
+
+          scene.add(this.pointClouds[data.detector_id]["foreground"]);
+          scene.add(this.pointClouds[data.detector_id]["background"]);
           updatePointCloudDropdown();
-        } else {
-          updatePointCloud(this.pointClouds[detector_id], points, detector_id);
+        } 
+        else {
+            console.log("Updating pc for det: ", data.detector_id, ", type: ", data.pc_type)
+            updatePointCloud(this.pointClouds[data.detector_id][data.pc_type], data.points, data.detector_id);
         }
       },
 
       onOBBReceived: (obbData) => {
-        const pc = this.pointClouds[obbData.detector_id];
+        const pc = this.pointClouds[obbData.detector_id]["foreground"]; 
         if (pc) {
           addOBBtoPointcloud(pc, obbData);
         } else {

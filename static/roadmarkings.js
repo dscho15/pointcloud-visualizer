@@ -25,7 +25,7 @@ export function enableRoadMarkingDrawing(scene, camera, renderer) {
       const btn = document.getElementById('reset-road-btn');
       if (btn) btn.click();
     } else if (event.key === 'n') {
-      const btn = document.getElementById('new-road-btn');
+      const btn = document.getElenmentById('new-road-btn');
       if (btn) btn.click();
     } else if (event.key === 'e') {
       const btn = document.getElementById('edit-road-btn');

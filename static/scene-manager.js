@@ -31,7 +31,7 @@ export class SceneManager {
 
   initializeScene() {
     // Scene setup
-    this.scene.background = new THREE.Color(0x222222);
+    this.scene.background = new THREE.Color(0xFFFFFF);
 
     // Camera setup
     this.camera = new THREE.PerspectiveCamera(

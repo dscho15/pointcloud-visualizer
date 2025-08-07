@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
 from natsort import natsorted
 import math
-from mockdata import update_bbs
+from unused.mockdata import update_bbs
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
@@ -143,6 +143,7 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             # Broadcast received data to all other clients
             for ws in list(clients):
+                
                 if ws != websocket and ws.application_state == WebSocketState.CONNECTED:
                     try:
                         await ws.send_text(data)
@@ -158,4 +159,4 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     print("Starting server on http://localhost:8000")
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("server:app", host="192.168.1.12", port=8000, reload=True)
