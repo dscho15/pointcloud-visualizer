@@ -11,159 +11,169 @@ import { settingsManager } from './settings-manager.js';
 
 // Initialize the application
 class PointCloudApp {
-  constructor() {
-    this.canvas = document.getElementById('webgl');
-    this.sceneManager = new SceneManager(this.canvas);
-    this.pointClouds = {};
-    this.foreground = 1;
-    this.init();
-  }
+    constructor() {
+        this.canvas = document.getElementById('webgl');
+        this.sceneManager = new SceneManager(this.canvas);
+        this.pointClouds = {};
+        this.foreground = 1;
+        this.init();
+    }
 
-  init() {
-    // Initialize UI controls with scene references
-    const objects = this.sceneManager.getObjects();
-    objects.pointClouds = this.pointClouds;
+    init() {
+        // Initialize UI controls with scene references
+        const objects = this.sceneManager.getObjects();
+        objects.pointClouds = this.pointClouds;
+
+        initUIControls(
+            this.sceneManager.getScene(),
+            objects,
+            this.sceneManager.getCamera(),
+            this.sceneManager.getRenderer()
+        );
+
+        // Initialize settings manager
+        settingsManager.initialize(
+            this.sceneManager.getScene(),
+            objects,
+            this.pointClouds
+        );
+
+        // Set up WebSocket communication
+        this.setupWebSocket();
+
+        // Start animation loop
+        this.sceneManager.animate();
+
+        // Set up satellite plane callback for UI
+        this.setupSatelliteCallback();
+
+        // Add settings management to global scope for console access
+        window.settingsManager = settingsManager;
+
     
-    initUIControls(
-      this.sceneManager.getScene(), 
-      objects, 
-      this.sceneManager.getCamera(),
-      this.sceneManager.getRenderer()
-    );
-    
-    // Initialize settings manager
-    settingsManager.initialize(
-      this.sceneManager.getScene(),
-      objects,
-      this.pointClouds
-    );
-    
-    // Set up WebSocket communication
-    this.setupWebSocket();
-    
-    // Start animation loop
-    this.sceneManager.animate();
-    
-    // Set up satellite plane callback for UI
-    this.setupSatelliteCallback();
-    
-    // Add settings management to global scope for console access
-    window.settingsManager = settingsManager;
-    
-    // Auto-save settings when changes occur (optional)
-    this.setupAutoSave();
+        // Auto-save settings when changes occur (optional)
+        this.setupAutoSave();
 
-    // enableRoadMarkingDrawing(
-    //   this.sceneManager.getScene(),
-    //   this.sceneManager.getCamera(),
-    //   this.sceneManager.getRenderer()
-    // );
+        // enableRoadMarkingDrawing(
+        //     this.sceneManager.getScene(),
+        //     this.sceneManager.getCamera(),
+        //     this.sceneManager.getRenderer()
+        // );
 
-    // setupRoadUI(
-    //   this.sceneManager.getScene(),
-    //   this.sceneManager.getCamera(),
-    //   this.sceneManager.getRenderer()
-    // );
+        // setupRoadUI(
+        //     this.sceneManager.getScene(),
+        //     this.sceneManager.getCamera(),
+        //     this.sceneManager.getRenderer()
+        // );
 
- 
-  }
 
-  setupSatelliteCallback() {
-    // Check periodically if satellite plane is loaded and update UI reference
-    const checkSatellite = () => {
-      const satellitePlane = this.sceneManager.getObjects().satellitePlane;
-      if (satellitePlane) {
-        setSatellitePlane(satellitePlane);
-      } else {
-        setTimeout(checkSatellite, 100);
-      }
-    };
-    checkSatellite();
-  }
+    }
 
-  setupWebSocket() {
-    const scene = this.sceneManager.getScene();
-    const objects = this.sceneManager.getObjects();
+    setupSatelliteCallback() {
+        // Check periodically if satellite plane is loaded and update UI reference
+        const checkSatellite = () => {
+            const satellitePlane = this.sceneManager.getObjects().satellitePlane;
+            if (satellitePlane) {
+                setSatellitePlane(satellitePlane);
+            } else {
+                setTimeout(checkSatellite, 100);
+            }
+        };
+        checkSatellite();
+    }
 
-    initWebSocket({
-      onPointsReceived: (data) => {
+    setupWebSocket() {
+        const scene = this.sceneManager.getScene();
+        const objects = this.sceneManager.getObjects();
 
-        if (!this.pointClouds[data.detector_id]) {
-          
-          if (data.pc_type === "foreground") {
-            console.log("FIRST: foreground is set, background is set to be empty")
-            this.pointClouds[data.detector_id] = {
-            foreground: createPointCloud(data.points),
-            background: createPointCloud([]),
-            };
-          }
-          else {
-            console.log("FIRST: background is set, foreground is set to be empty")
-            this.pointClouds[data.detector_id] = {
-            foreground: createPointCloud([]),
-            background: createPointCloud(data.points),
-            };
+        initWebSocket({
+            onPointsReceived: (data) => {
+                if (!this.pointClouds[data.detector_id]) 
+                {
+                    if (data.pc_type === "foreground") {
+                        this.pointClouds[data.detector_id] = {
+                            foreground: createPointCloud(data.points),
+                            background: createPointCloud([]),
+                        };
+                    } else if (data.pc_type === "background") {
+                        this.pointClouds[data.detector_id] = {
+                            foreground: createPointCloud([]),
+                            background: createPointCloud(data.points),
+                        };
+                    }
+                    else {
+                        console.error("Unknown point cloud type received:", data.pc_type);
+                        return;
+                    }
+                    scene.add(this.pointClouds[data.detector_id]["foreground"]);
+                    scene.add(this.pointClouds[data.detector_id]["background"]);
+                    updatePointCloudDropdown();
+                }
+                else {
+                    if (
+                        data.pc_type === "foreground" ||
+                        data.pc_type === "background"
+                    ) 
+                    {
+                        console.log("Updating pc for det: ", data.detector_id, ", type: ", data.pc_type);
+                        updatePointCloud(
+                            this.pointClouds[data.detector_id][data.pc_type],
+                            data.points,
+                            data.detector_id
+                        );
+                    }
+                }
+            },
 
-          }
+            onOBBReceived: (obbData) => {
+                const pc = this.pointClouds[obbData.detector_id]["foreground"];
+                if (pc) {
+                    addOBBtoPointcloud(pc, obbData);
+                } else {
+                    console.warn('No point cloud found for detector:', obbData.detector_id);
+                }
+            },
 
-          scene.add(this.pointClouds[data.detector_id]["foreground"]);
-          scene.add(this.pointClouds[data.detector_id]["background"]);
-          updatePointCloudDropdown();
-        } 
-        else {
-          updatePointCloud(this.pointClouds[data.detector_id][data.pc_type], data.points);
-        }
-      },
+            onHeatmapReceived: (heat_data) => {
+                updateHeatmap(heat_data, objects.heatmapTexture);
+            },
 
-      onOBBReceived: (obbData) => {
-        const pc = this.pointClouds[obbData.detector_id]["foreground"]; 
-        if (pc) {
-          addOBBtoPointcloud(pc, obbData);
-        } else {
-          console.warn('No point cloud found for detector:', obbData.detector_id);
-        }
-      },
+            onHeadingReceived: (heading_data) => {
+                updateHeading(heading_data, getHeadingVisible(), scene);
+            },
 
-      onHeatmapReceived: (heat_data) => {
-        updateHeatmap(heat_data, objects.heatmapTexture);
-      },
+            onAvgSpeedRecieved: (speed_data) => {
+                console.log("Received avg speed data");
+                updateAvgSpeed(speed_data, objects.avgSpeedTexture);
+            },
 
-      onHeadingReceived: (heading_data) => {
-        updateHeading(heading_data, getHeadingVisible(), scene);
-      },
+            onMaxSpeedRecieved: (speed_data) => {
+                console.log("Received max speed data");
+                updateMaxSpeed(speed_data, objects.maxSpeedTexture);
+            },
+        });
+    }
 
-      onAvgSpeedRecieved: (speed_data) => {
-        console.log("Received avg speed data");
-        updateAvgSpeed(speed_data, objects.avgSpeedTexture);
-      },
+    setupAutoSave() {
+        // Auto-save settings every 10 seconds if there are changes
+        let lastSettingsHash = '';
 
-      onMaxSpeedRecieved: (speed_data) => {
-        console.log("Received max speed data");
-        updateMaxSpeed(speed_data, objects.maxSpeedTexture);
-      },
-    });
-  }
-  
-  setupAutoSave() {
-    // Auto-save settings every 10 seconds if there are changes
-    let lastSettingsHash = '';
-    
-    setInterval(() => {
-      try {
-        const currentSettings = settingsManager.exportSettings();
-        const currentHash = JSON.stringify(currentSettings);
-        
-        if (currentHash !== lastSettingsHash) {
-          lastSettingsHash = currentHash;
-          // Optionally send to API
-          settingsManager.sendSettingsToAPI(currentSettings);
-          console.log('Settings auto-saved');
-        }
-      } catch (error) {
-        console.error('Auto-save error:', error);
-      }
-    }, 10000); // 10 seconds
-  }
+        setInterval(() => {
+            try {
+                const currentSettings = settingsManager.exportSettings();
+                const currentHash = JSON.stringify(currentSettings);
+
+                if (currentHash !== lastSettingsHash) {
+                    lastSettingsHash = currentHash;
+                    // Optionally send to API
+                    settingsManager.sendSettingsToAPI(currentSettings);
+                    console.log('Settings auto-saved');
+                }
+            } catch (error) {
+                console.error('Auto-save error:', error);
+            }
+        }, 10000); // 10 seconds
+    }
 }
 
 // Start the application
