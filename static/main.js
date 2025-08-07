@@ -6,7 +6,8 @@ import { addOBBtoPointcloud } from './obb.js';
 import { SceneManager } from './scene-manager.js';
 import { initUIControls, updatePointCloudDropdown, getHeadingVisible, setSatellitePlane } from './ui-controls.js';
 import { settingsManager } from './settings-manager.js';
-import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
+// import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
+
 
 // Initialize the application
 class PointCloudApp {
@@ -52,17 +53,17 @@ class PointCloudApp {
     // Auto-save settings when changes occur (optional)
     this.setupAutoSave();
 
-    enableRoadMarkingDrawing(
-      this.sceneManager.getScene(),
-      this.sceneManager.getCamera(),
-      this.sceneManager.getRenderer()
-    );
+    // enableRoadMarkingDrawing(
+    //   this.sceneManager.getScene(),
+    //   this.sceneManager.getCamera(),
+    //   this.sceneManager.getRenderer()
+    // );
 
-    setupRoadUI(
-      this.sceneManager.getScene(),
-      this.sceneManager.getCamera(),
-      this.sceneManager.getRenderer()
-    );
+    // setupRoadUI(
+    //   this.sceneManager.getScene(),
+    //   this.sceneManager.getCamera(),
+    //   this.sceneManager.getRenderer()
+    // );
 
  
   }
@@ -90,14 +91,14 @@ class PointCloudApp {
         if (!this.pointClouds[data.detector_id]) {
           
           if (data.pc_type === "foreground") {
-            console.log("FIRST: foreground is set, backrgound is set to be empty")
+            console.log("FIRST: foreground is set, background is set to be empty")
             this.pointClouds[data.detector_id] = {
             foreground: createPointCloud(data.points),
             background: createPointCloud([]),
             };
           }
           else {
-            console.log("FIRST: backrgound is set, backrgound is set to be empty")
+            console.log("FIRST: background is set, foreground is set to be empty")
             this.pointClouds[data.detector_id] = {
             foreground: createPointCloud([]),
             background: createPointCloud(data.points),
@@ -110,8 +111,7 @@ class PointCloudApp {
           updatePointCloudDropdown();
         } 
         else {
-            console.log("Updating pc for det: ", data.detector_id, ", type: ", data.pc_type)
-            updatePointCloud(this.pointClouds[data.detector_id][data.pc_type], data.points, data.detector_id);
+          updatePointCloud(this.pointClouds[data.detector_id][data.pc_type], data.points);
         }
       },
 

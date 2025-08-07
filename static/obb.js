@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+import { getAllRoadMarkings } from './roadmarkings.js';
 
 const obbMap = {};
 
@@ -30,6 +30,36 @@ function hexFromTHREEColor(color) {
   return '#' + color.getHexString();
 }
 
+
+// // Simple 2D point-in-polygon test using ray-casting
+// function isPointInsidePolygon(point, polygon) {
+//   let x = point.x, y = point.y;
+//   console.log("X, Y:", x, y)
+//   let inside = false;
+//   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+//     const xi = polygon[i].x, yi = polygon[i].y;
+//     const xj = polygon[j].x, yj = polygon[j].y;
+
+//     const intersect = ((yi > y) !== (yj > y)) &&
+//                       (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+//     if (intersect) inside = !inside;
+//   }
+//   return inside;
+// }
+
+// // Check if center is inside ANY road marking polygon
+// function isOBBInsideLane(obbCenter) {
+//   const allRoads = getAllRoadMarkings(); // returns array of arrays of Vector3
+//   console.log("roads: ", allRoads.length)
+//   for (const road of allRoads) {
+//     if (road.length >= 3 && isPointInsidePolygon(obbCenter, road)) {
+//       return true;
+//     }
+//   }
+//   return false;
+// }
+
+
 export function addOBBtoPointcloud(pointCloud, obbData) {
   const {boxes, detector_id, class_ids, track_ids, scores} = obbData; 
 
@@ -45,42 +75,72 @@ export function addOBBtoPointcloud(pointCloud, obbData) {
   boxes.forEach(([x, y, z, dx, dy, dz, theta], i) => {
     const track_id = track_ids[i]
     const class_id = class_ids[i]
-    const score = scores[i]
+    // const score = scores[i]
+    // const center = new THREE.Vector3(x, y, z);
+    // if (isOBBInsideLane(center))
+    // { 
+    activeTrackIds.add(track_id);
+    track_to_detector[track_id] = detector_id;
     
-    if (score > 0.25)
-    { 
-      activeTrackIds.add(track_id);
-      track_to_detector[track_id] = detector_id;
+    if (!track_colors[track_id]) {
+      track_colors[track_id] = '#000000'//getRandomColorFromPalette(class_id)
+    }
+    
+    const color = track_colors[track_id]
+
+    const geometry = new THREE.BoxGeometry(dx, dy, dz);
+    const material = new THREE.MeshBasicMaterial({
+      color: color,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.5
+    });
+
+    const obbMesh = new THREE.Mesh(geometry, material);
+
+    // Rotate around Z, set position relative to PC (local transform), add as pc child
+    obbMesh.rotation.z = theta;
+    obbMesh.position.set(x, y, z);
+    pointCloud.add(obbMesh);
+    obbMap[detector_id].push(obbMesh);
+    // }
+
+    // else {
+    // activeTrackIds.add(track_id);
+    //   track_to_detector[track_id] = detector_id;
       
-      if (!track_colors[track_id]) {
-        track_colors[track_id] = getRandomColorFromPalette(class_id)
-      }
+    //   if (!track_colors[track_id]) {
+    //     track_colors[track_id] = getRandomColorFromPalette(0) // class_id
+    //   }
       
-      const color = track_colors[track_id]
+    //   const color = track_colors[track_id]
 
-      const geometry = new THREE.BoxGeometry(dx, dy, dz);
-      const material = new THREE.MeshBasicMaterial({
-        color: color,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.5
-      });
+    //   const geometry = new THREE.BoxGeometry(dx, dy, dz);
+    //   const material = new THREE.MeshBasicMaterial({
+    //     color: color,
+    //     wireframe: true,
+    //     transparent: true,
+    //     opacity: 0.5
+    //   });
 
-      const obbMesh = new THREE.Mesh(geometry, material);
+    //   const obbMesh = new THREE.Mesh(geometry, material);
 
-      // Rotate around Z, set position relative to PC (local transform), add as pc child
-      obbMesh.rotation.z = theta;
-      obbMesh.position.set(x, y, z);
-      pointCloud.add(obbMesh);
-      obbMap[detector_id].push(obbMesh);}
+    //   // Rotate around Z, set position relative to PC (local transform), add as pc child
+    //   obbMesh.rotation.z = theta;
+    //   obbMesh.position.set(x, y, z);
+    //   pointCloud.add(obbMesh);
+    //   obbMap[detector_id].push(obbMesh);
+    // }
   });
-    // Remove objects that have left scene from all lists
+
+
+  // Remove objects that have left scene from all lists
   for (const track_id in track_to_detector) {
     if (track_to_detector[track_id] === detector_id){
       if (!activeTrackIds.has(Number(track_id))) {
-        const colorHex = hexFromTHREEColor(track_colors[track_id]);
-        assigned_colors.delete(colorHex);
-        delete track_colors[track_id];
+        // const colorHex = hexFromTHREEColor(track_colors[track_id]);
+        // assigned_colors.delete(colorHex);
+        // delete track_colors[track_id];
         delete track_to_detector[track_id];
       }
   

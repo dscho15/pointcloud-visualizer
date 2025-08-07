@@ -10,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
 from natsort import natsorted
 import math
-from unused.mockdata import update_bbs
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 

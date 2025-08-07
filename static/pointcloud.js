@@ -40,7 +40,7 @@ export function createPointCloud(initialPoints)
   return new THREE.Points(geometry, material);
 }
 
-export function updatePointCloud(pointCloud, newPoints, detector_id) 
+export function updatePointCloud(pointCloud, newPoints) 
 {
   const flat = flattenPoints(newPoints);
   const newArray = new Float32Array(flat);
