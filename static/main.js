@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { initWebSocket } from './websocket.js';
 import { createPointCloud, updatePointCloud } from './pointcloud.js';
-import { updateHeatmap, updateHeading, updateAvgSpeed, updateMaxSpeed } from './heatmap.js';
+// import { updateHeatmap, updateHeading, updateAvgSpeed, updateMaxSpeed } from './heatmap.js';
 import { addOBBtoPointcloud } from './obb.js';
 import { SceneManager } from './scene-manager.js';
 import { initUIControls, updatePointCloudDropdown, getHeadingVisible, setSatellitePlane } from './ui-controls.js';
@@ -114,27 +114,27 @@ class PointCloudApp {
             onOBBReceived: (obbData) => {
                 const pc = this.pointClouds[obbData.detector_id]["foreground"];
                 if (pc) {
-                    addOBBtoPointcloud(pc, obbData);
+                    addOBBtoPointcloud(pc, obbData, objects, scene);
                 } else {
                     console.warn('No point cloud found for detector:', obbData.detector_id);
                 }
             },
 
-            onHeatmapReceived: (heat_data) => {
-                updateHeatmap(heat_data, objects.heatmapTexture);
-            },
+            // onHeatmapReceived: (heat_data) => {
+            //     updateHeatmap(heat_data, objects.heatmapTexture);
+            // },
 
-            onHeadingReceived: (heading_data) => {
-                updateHeading(heading_data, getHeadingVisible(), scene);
-            },
+            // onHeadingReceived: (heading_data) => {
+            //     updateHeading(heading_data, getHeadingVisible(), scene);
+            // },
 
-            onAvgSpeedRecieved: (speed_data) => {
-                updateAvgSpeed(speed_data, objects.avgSpeedTexture);
-            },
+            // onAvgSpeedRecieved: (speed_data) => {
+            //     updateAvgSpeed(speed_data, objects.avgSpeedTexture);
+            // },
 
-            onMaxSpeedRecieved: (speed_data) => {
-                updateMaxSpeed(speed_data, objects.maxSpeedTexture);
-            },
+            // onMaxSpeedRecieved: (speed_data) => {
+            //     updateMaxSpeed(speed_data, objects.maxSpeedTexture);
+            // },
         });
     }
 

@@ -17,18 +17,18 @@ export function initWebSocket({ onPointsReceived, onOBBReceived, onHeatmapReceiv
         onPointsReceived(data);
       } else if (data.type === 'obb') {
         onOBBReceived(data);
-      } else if (data.type === 'heatmap') {
-        onHeatmapReceived(data.data)
-      }
-      else if (data.type === 'heading') {
-        onHeadingReceived(data)
-      }
-      else if (data.type === 'avg_speed_map') {
-        onAvgSpeedRecieved(data)
-      }
-      else if (data.type === 'max_speed_map') {
-        onMaxSpeedRecieved(data)
-      }
+      } // else if (data.type === 'heatmap') {
+      //   onHeatmapReceived(data.data)
+      // }
+      // else if (data.type === 'heading') {
+      //   onHeadingReceived(data)
+      // }
+      // else if (data.type === 'avg_speed_map') {
+      //   onAvgSpeedRecieved(data)
+      // }
+      // else if (data.type === 'max_speed_map') {
+      //   onMaxSpeedRecieved(data)
+      // }
     } catch (err) {
       console.error('[WebSocket] JSON error:', err);
     }

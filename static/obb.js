@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getAllRoadMarkings } from './roadmarkings.js';
+import { updateHeatmap } from './heatmap.js';
 
 const obbMap = {};
 
@@ -30,7 +31,7 @@ function hexFromTHREEColor(color) {
   return '#' + color.getHexString();
 }
 
-export function addOBBtoPointcloud(pointCloud, obbData) {
+export function addOBBtoPointcloud(pointCloud, obbData, sceneObjects, scene) {
   const {boxes, detector_id, class_ids, track_ids, scores} = obbData; 
 
   if (!pointCloud) return;
@@ -70,6 +71,9 @@ export function addOBBtoPointcloud(pointCloud, obbData) {
     obbMesh.position.set(x, y, z);
     pointCloud.add(obbMesh);
     obbMap[detector_id].push(obbMesh);
+
+    // Update heatmap based on valid boxes
+    updateHeatmap(obbData, sceneObjects, scene);
   
   });
 
