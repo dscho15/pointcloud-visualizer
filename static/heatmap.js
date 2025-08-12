@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getHeadingVisible } from './ui-controls.js';
 
-const heatmap_resolution = 0.25;  
+const heatmap_resolution = 0.5;  
 const world_min = -100.0;
 const world_max = 100.0;
 const max_speed_possible = 130;
@@ -13,9 +13,6 @@ const prev_obb_by_id = {}
 let heatmap_grid = Array.from({ length: heatmap_height }, () =>
   Array.from({ length: heatmap_width }, () => [0, 0, 0, 0, 0])
 );
-
-
-
 
 
 function world_to_grid(x, y) {
@@ -136,8 +133,9 @@ export function updateHeading(heading_data, scene) {
     if (!heading_data || !heading_data.data) return;
 
     const { width, data } = heading_data;
-    const worldMin = -100;
-    const resolution = 0.25;
+    // Use the same coordinate system as the main heatmap
+    const worldMin = world_min;  // -100
+    const resolution = heatmap_resolution;  // 0.5
 
     const stride = 4; // Draw every 4th cell in both X and Y
 
@@ -155,7 +153,7 @@ export function updateHeading(heading_data, scene) {
         const worldX = worldMin + gridX * resolution;
         const worldY = worldMin + gridY * resolution;
 
-        const origin = new THREE.Vector3(worldX, worldY, 0.05);
+        const origin = new THREE.Vector3(worldX, worldY, 0.05); // Position above the heatmap plane
         const dir = new THREE.Vector3(dx, dy, 0).normalize();
 
         const arrow = new THREE.ArrowHelper(dir, origin, arr_len, 0x105222, arr_head_len, arr_head_w);

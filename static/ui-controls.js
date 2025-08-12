@@ -37,6 +37,8 @@ function setupPointCloudControls() {
   const pcSelect = document.getElementById('pc-select');
   const pcControls = document.getElementById('pc-controls');
   const pcVisible = document.getElementById('pc-visible');
+  const backgroundVisible = document.getElementById('background-visible');
+  const globalBackgroundToggle = document.getElementById('global-background-toggle');
   const toggleBtn = document.getElementById('toggle-pc-controls');
   const pcX = document.getElementById('pc-x');
   const pcY = document.getElementById('pc-y');
@@ -44,6 +46,27 @@ function setupPointCloudControls() {
   const pcRotZ = document.getElementById('pc-rot-z');
 
   if (!pcSelect) return;
+
+  // Global background toggle - affects all point clouds
+  if (globalBackgroundToggle) {
+    globalBackgroundToggle.addEventListener('change', () => {
+      const showBackgrounds = globalBackgroundToggle.checked;
+      
+      // Update all background point clouds
+      for (const detectorId in pointClouds) {
+        if (pointClouds[detectorId] && pointClouds[detectorId].background) {
+          pointClouds[detectorId].background.visible = showBackgrounds;
+        }
+      }
+      
+      // Update individual background control if a point cloud is selected
+      if (backgroundVisible) {
+        backgroundVisible.checked = showBackgrounds;
+      }
+      
+      console.log(`All background point clouds ${showBackgrounds ? 'enabled' : 'disabled'}`);
+    });
+  }
 
   pcSelect.addEventListener('change', () => {
     const detectorId = pcSelect.value;
@@ -59,23 +82,42 @@ function setupPointCloudControls() {
     toggleBtn.style.display = 'inline-block';
     toggleBtn.textContent = 'Hide Controls';
 
-    // Update UI values to match selected point cloud
-    for (var pc in selectedPCs) {
-      pcVisible.checked = pc.visible;
-      pcX.value = pc.position.x;
-      pcY.value = pc.position.y;
-      pcZ.value = pc.position.z;
-      pcRotZ.value = pc.rotation.z;
+    // Update UI values to match selected point cloud (use foreground as reference)
+    const foregroundPC = selectedPCs.foreground;
+    if (foregroundPC) {
+      pcVisible.checked = foregroundPC.visible;
+      pcX.value = foregroundPC.position.x;
+      pcY.value = foregroundPC.position.y;
+      pcZ.value = foregroundPC.position.z;
+      pcRotZ.value = foregroundPC.rotation.z;
     }
-    
+
+    // Update background visibility control
+    if (backgroundVisible && selectedPCs.background) {
+      backgroundVisible.checked = selectedPCs.background.visible;
+    }
   });
+
+  // Individual background visibility control
+  if (backgroundVisible) {
+    backgroundVisible.addEventListener('change', () => {
+      if (selectedPCs && selectedPCs.background) {
+        selectedPCs.background.visible = backgroundVisible.checked;
+        console.log(`Background for detector ${pcSelect.value} ${backgroundVisible.checked ? 'enabled' : 'disabled'}`);
+      }
+    });
+  }
 
   // Point cloud property controls
   if (pcVisible) {
     pcVisible.addEventListener('input', () => {
       if (selectedPCs) {
-        for (var pc in selectedPCs) {
-          pc.visible = pcVisible.checked;
+        // Only control foreground and background separately now
+        if (selectedPCs.foreground) {
+          selectedPCs.foreground.visible = pcVisible.checked;
+        }
+        if (selectedPCs.background) {
+          selectedPCs.background.visible = pcVisible.checked;
         }
       }
     });
@@ -84,20 +126,19 @@ function setupPointCloudControls() {
   if (pcX) {
     pcX.addEventListener('input', () => {
       if (selectedPCs) {
-        for (var pc in selectedPCs) {
-          pc.position.x = parseFloat(pcX.value);
-        }
+        const value = parseFloat(pcX.value);
+        if (selectedPCs.foreground) selectedPCs.foreground.position.x = value;
+        if (selectedPCs.background) selectedPCs.background.position.x = value;
       }
- 
     });
   }
 
   if (pcY) {
     pcY.addEventListener('input', () => {
       if (selectedPCs) {
-        for (var pc in selectedPCs) {
-          pc.position.y = parseFloat(pcY.value);
-        }
+        const value = parseFloat(pcY.value);
+        if (selectedPCs.foreground) selectedPCs.foreground.position.y = value;
+        if (selectedPCs.background) selectedPCs.background.position.y = value;
       }
     });
   }
@@ -105,9 +146,9 @@ function setupPointCloudControls() {
   if (pcZ) {
     pcZ.addEventListener('input', () => {
       if (selectedPCs) {
-        for (var pc in selectedPCs) {
-          pc.position.z = parseFloat(pcZ.value);
-        }
+        const value = parseFloat(pcZ.value);
+        if (selectedPCs.foreground) selectedPCs.foreground.position.z = value;
+        if (selectedPCs.background) selectedPCs.background.position.z = value;
       }
     });
   }
@@ -115,9 +156,9 @@ function setupPointCloudControls() {
   if (pcRotZ) {
     pcRotZ.addEventListener('input', () => {
       if (selectedPCs) {
-        for (var pc in selectedPCs) {
-          pc.rotation.z = parseFloat(pcRotZ.value);
-        }
+        const value = parseFloat(pcRotZ.value);
+        if (selectedPCs.foreground) selectedPCs.foreground.rotation.z = value;
+        if (selectedPCs.background) selectedPCs.background.rotation.z = value;
       }
     });
   }

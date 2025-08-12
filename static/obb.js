@@ -4,6 +4,10 @@ import { updateHeatmap } from './heatmap.js';
 
 const obbMap = {};
 
+// Performance tracking
+let lastHeatmapUpdate = 0;
+const HEATMAP_UPDATE_THRESHOLD = 100; // Update heatmap at most every 100ms
+
 // Color palette per class_id (define more if needed)
 const class_palettes = {
   0: ['#BCBFFA', '#9196F7', '#666EF4', "#3B45F1", "#111CEE", "#0E16C7", "#0B1299"],   // Cars: blue
@@ -71,11 +75,15 @@ export function addOBBtoPointcloud(pointCloud, obbData, sceneObjects, scene) {
     obbMesh.position.set(x, y, z);
     pointCloud.add(obbMesh);
     obbMap[detector_id].push(obbMesh);
-
-    // Update heatmap based on valid boxes
-    updateHeatmap(obbData, sceneObjects, scene);
   
   });
+
+  // Update heatmap once per detector update instead of per box (much more efficient)
+  const now = Date.now();
+  if (now - lastHeatmapUpdate > HEATMAP_UPDATE_THRESHOLD) {
+    updateHeatmap(obbData, sceneObjects, scene);
+    lastHeatmapUpdate = now;
+  }
 
 
   // Remove objects that have left scene from all lists

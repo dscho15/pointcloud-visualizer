@@ -88,8 +88,9 @@ export class SceneManager {
 
   setupHeatmapPlanes() {
     // Create heatmap texture and plane
-    const texWidth = 800;
-    const texHeight = 800;
+    // Match the heatmap grid size: (world_max - world_min) / heatmap_resolution = 200 / 0.5 = 400
+    const texWidth = 400;
+    const texHeight = 400;
     const worldWidth = 200;
     const worldHeight = 200;
 
@@ -114,7 +115,7 @@ export class SceneManager {
 
     const geometry = new THREE.PlaneGeometry(worldWidth, worldHeight);
     this.objects.heatmapPlane = new THREE.Mesh(geometry, heatmapMaterial);
-    this.objects.heatmapPlane.position.set(0, 0, 0);
+    this.objects.heatmapPlane.position.set(0, 0, -0.1); // Position slightly below z=0 so point clouds appear on top
     this.scene.add(this.objects.heatmapPlane);
 
     // Speed textures

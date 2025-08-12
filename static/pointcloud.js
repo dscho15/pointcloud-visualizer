@@ -16,75 +16,324 @@ function getViridisColor(norm) {
   return [r / 255, g / 255, b / 255];
 }
 
-let geometry, material;
+// Cache z-offset to avoid frequent function calls
+let cachedZOffset = 0;
+let zOffsetCacheTime = 0;
 
-export function createPointCloud(initialPoints) 
+export function createPointCloud(initialPoints, options = {}) 
 {
-  geometry = new THREE.BufferGeometry();
+  const {
+    pointType = 'foreground', // 'foreground' or 'background'
+    size = null,              // Custom point size
+    opacity = null,           // Custom opacity
+    colorMap = 'jet'          // Color map selection
+  } = options;
+
+  const geometry = new THREE.BufferGeometry();
   const vertices = new Float32Array(flattenPoints(initialPoints));
   geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
-  // Compute colors by distance
-  const colorsArray = getColorsByHeight(initialPoints);
+  // Compute colors by height
+  const colorsArray = getColorsByHeight(initialPoints, colorMap);
   const colors = new Float32Array(colorsArray);
-  // const colors = getColorByDetectorID(detector_id, initialPoints.length);
-  // const colors = new Float32Array(getColorsByDistance(initialPoints));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-  material = new THREE.PointsMaterial({
-    size: 0.1, // Larger points
-    vertexColors: true,
-    sizeAttenuation: false, // Keep consistent size regardless of distance
-  });
+  // Differentiate material properties based on point type
+  const materialConfig = getMaterialConfig(pointType, size, opacity);
+  const material = new THREE.PointsMaterial(materialConfig);
 
-  return new THREE.Points(geometry, material);
+  const pointCloud = new THREE.Points(geometry, material);
+  
+  // Store metadata for efficient updates
+  pointCloud.userData = {
+    lastUpdateTime: Date.now(),
+    pointCount: initialPoints.length,
+    heightRange: getHeightRange(initialPoints),
+    lastDataHash: hashPointCloudData(initialPoints),
+    pointType: pointType,
+    colorMap: colorMap
+  };
+
+  return pointCloud;
 }
 
 export function updatePointCloud(pointCloud, newPoints) 
 {
+  if (!newPoints || newPoints.length === 0) return;
+  
+  const now = Date.now();
+  const timeSinceUpdate = now - (pointCloud.userData?.lastUpdateTime || 0);
+  const pointType = pointCloud.userData?.pointType || 'foreground';
+  
+  // Different throttling for background vs foreground
+  const updateThreshold = getUpdateThreshold(pointType);
+  if (timeSinceUpdate < updateThreshold) return;
+  
+  // Check if data actually changed using a simple hash
+  const dataHash = hashPointCloudData(newPoints);
+  if (pointCloud.userData.lastDataHash === dataHash) {
+    pointCloud.userData.lastUpdateTime = now; // Update timestamp to prevent spam
+    return; // No actual change in data
+  }
+  
+  // For background: additional check for significant changes only
+  if (pointType === 'background' && !hasSignificantChange(pointCloud, newPoints, dataHash)) {
+    pointCloud.userData.lastUpdateTime = now;
+    return;
+  }
+  
   const flat = flattenPoints(newPoints);
   const newArray = new Float32Array(flat);
+  const needsResize = newArray.length !== pointCloud.geometry.attributes.position.array.length;
 
-  if (newArray.length !== pointCloud.geometry.attributes.position.array.length) 
-  {
+    if (needsResize) {
+    // Size changed - recreate buffers
     pointCloud.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3));
-    // Also update colors
-    const colorsArray = getColorsByHeight(newPoints);
-  const colors = new Float32Array(colorsArray);
-    // const colors = (getColorByDetectorID(detector_id, newPoints.length));
-    // const colors = new Float32Array(getColorsByDistance(newPoints));
-    pointCloud.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  } 
-  else 
-  {
-    pointCloud.geometry.attributes.position.array.set(newArray);
-    pointCloud.geometry.attributes.position.needsUpdate = true;
-    // Update colors
-    const colorsArray = getColorsByHeight(newPoints);
+    const colorsArray = getColorsByHeightOptimized(newPoints, null, pointCloud.userData.colorMap);
     const colors = new Float32Array(colorsArray);
-    // const colors = getColorByDetectorID(detector_id, newPoints.length);
-    // const colors = getColorsByDistance(newPoints);
-    pointCloud.geometry.attributes.color.array.set(colors);
-    pointCloud.geometry.attributes.color.needsUpdate = true;
+    pointCloud.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    pointCloud.geometry.computeBoundingSphere();
+    
+    // Update metadata
+    pointCloud.userData.pointCount = newPoints.length;
+    pointCloud.userData.heightRange = getHeightRange(newPoints);
+  } 
+  else {
+    // Same size - check if position data actually changed
+    const oldArray = pointCloud.geometry.attributes.position.array;
+    let positionsChanged = false;
+    
+    // Quick check: compare a few sample points for significant changes
+    const samplePoints = Math.min(10, newPoints.length);
+    for (let i = 0; i < samplePoints; i++) {
+      const idx = Math.floor(i * newPoints.length / samplePoints) * 3;
+      if (Math.abs(oldArray[idx] - newArray[idx]) > 0.001 ||
+          Math.abs(oldArray[idx + 1] - newArray[idx + 1]) > 0.001 ||
+          Math.abs(oldArray[idx + 2] - newArray[idx + 2]) > 0.001) {
+        positionsChanged = true;
+        break;
+      }
+    }
+    
+    if (positionsChanged) {
+      pointCloud.geometry.attributes.position.array.set(newArray);
+      pointCloud.geometry.attributes.position.needsUpdate = true;
+    }
+    
+    // Color update logic varies by point type
+    const newHeightRange = getHeightRange(newPoints);
+    const shouldUpdateColors = shouldUpdatePointCloudColors(pointCloud, newPoints, newHeightRange);
+    if (shouldUpdateColors) {
+      const colorsArray = getColorsByHeightOptimized(newPoints, newHeightRange, pointCloud.userData.colorMap);
+      const colors = new Float32Array(colorsArray);
+      pointCloud.geometry.attributes.color.array.set(colors);
+      pointCloud.geometry.attributes.color.needsUpdate = true;
+      pointCloud.userData.heightRange = newHeightRange;
+    }
   }
-  pointCloud.geometry.computeBoundingSphere();
+  
+  // Update metadata
+  pointCloud.userData.lastUpdateTime = now;
+  pointCloud.userData.lastDataHash = dataHash;
 }
 
 function flattenPoints(points) {
-  const zOffset = getCurrentZOffset();
-  return points.map(pt => [pt[0], pt[1], pt[2] + zOffset]).flat();
+  // Cache z-offset for 100ms to avoid excessive function calls
+  const now = Date.now();
+  if (now - zOffsetCacheTime > 100) {
+    cachedZOffset = getCurrentZOffset();
+    zOffsetCacheTime = now;
+  }
+  
+  // Single loop optimization instead of map + flat
+  const result = new Array(points.length * 3);
+  for (let i = 0; i < points.length; i++) {
+    const pt = points[i];
+    const baseIdx = i * 3;
+    result[baseIdx] = pt[0];
+    result[baseIdx + 1] = pt[1];
+    result[baseIdx + 2] = pt[2] + cachedZOffset;
+  }
+  return result;
+}
+
+// Get height range for dynamic color scaling
+function getHeightRange(points) {
+  if (!points || points.length === 0) return { min: 0, max: 10 };
+  
+  let min = points[0][2];
+  let max = points[0][2];
+  
+  for (let i = 1; i < points.length; i++) {
+    const height = points[i][2];
+    if (height < min) min = height;
+    if (height > max) max = height;
+  }
+  
+  return { min, max };
+}
+
+// Fast hash function to detect data changes
+function hashPointCloudData(points) {
+  if (!points || points.length === 0) return 0;
+  
+  let hash = 0;
+  // Sample a subset of points for hashing to balance performance vs accuracy
+  const sampleSize = Math.min(50, points.length);
+  const step = Math.floor(points.length / sampleSize) || 1;
+  
+  for (let i = 0; i < points.length; i += step) {
+    const pt = points[i];
+    // Simple hash combining x, y, z coordinates
+    hash = ((hash << 5) - hash + (pt[0] * 1000 | 0)) | 0;
+    hash = ((hash << 5) - hash + (pt[1] * 1000 | 0)) | 0;
+    hash = ((hash << 5) - hash + (pt[2] * 1000 | 0)) | 0;
+  }
+  
+  return hash;
+}
+
+// Get material configuration based on point type
+function getMaterialConfig(pointType, customSize = null, customOpacity = null) {
+  const baseConfig = {
+    vertexColors: true,
+    sizeAttenuation: false,
+  };
+
+  switch (pointType) {
+    case 'foreground':
+      return {
+        ...baseConfig,
+        size: customSize || 0.12,        // Slightly larger for foreground
+        opacity: customOpacity || 1.0,   // Fully opaque
+        transparent: false
+      };
+    
+    case 'background':
+      return {
+        ...baseConfig,
+        size: customSize || 0.08,        // Smaller for background
+        opacity: customOpacity || 0.6,   // More transparent
+        transparent: true,
+        depthWrite: false                // Don't write to depth buffer to avoid z-fighting
+      };
+    
+    default:
+      return {
+        ...baseConfig,
+        size: customSize || 0.1,
+        opacity: customOpacity || 1.0,
+        transparent: customOpacity !== null && customOpacity < 1.0
+      };
+  }
+}
+
+// Optimized color calculation with optional pre-computed range and color map
+function getColorsByHeightOptimized(points, heightRange = null, colorMap = 'jet') {
+  if (!points || points.length === 0) return [];
+  
+  const range = heightRange || getHeightRange(points);
+  const rangeSize = range.max - range.min || 1;
+  
+  // Select color palette
+  const palette = getColorPalette(colorMap);
+  
+  // Pre-allocate result array
+  const result = new Array(points.length * 3);
+  
+  for (let i = 0; i < points.length; i++) {
+    const norm = Math.max(0, Math.min(1, (points[i][2] - range.min) / rangeSize));
+    const colorIdx = Math.floor(norm * (palette.length - 1));
+    const [r, g, b] = palette[colorIdx];
+    
+    const baseIdx = i * 3;
+    result[baseIdx] = r / 255;
+    result[baseIdx + 1] = g / 255;
+    result[baseIdx + 2] = b / 255;
+  }
+  
+  return result;
+}
+
+// Get color palette based on selection
+function getColorPalette(colorMap) {
+  switch (colorMap) {
+    case 'viridis':
+      return VIRIDIS;
+    case 'jet':
+    default:
+      return JET;
+  }
+}
+
+// Get appropriate update threshold based on point type
+function getUpdateThreshold(pointType) {
+  switch (pointType) {
+    case 'foreground':
+      return 16;        // 60 FPS for dynamic objects
+    case 'background':
+      return 500;       // 2 FPS for static environment (much less frequent)
+    default:
+      return 33;        // 30 FPS default
+  }
+}
+
+// Check if background point cloud has significant changes worth updating
+function hasSignificantChange(pointCloud, newPoints, newDataHash) {
+  const userData = pointCloud.userData;
+  const pointType = userData.pointType;
+  
+  // Always allow foreground updates
+  if (pointType !== 'background') return true;
+  
+  // For background, check multiple criteria for significance
+  const timeSinceLastUpdate = Date.now() - userData.lastUpdateTime;
+  const forceUpdateInterval = 10000; // Force update every 10 seconds max
+  
+  // Force update if too much time has passed
+  if (timeSinceLastUpdate > forceUpdateInterval) return true;
+  
+  // Check if point count changed significantly (>5%)
+  const pointCountChange = Math.abs(newPoints.length - userData.pointCount) / userData.pointCount;
+  if (pointCountChange > 0.05) return true;
+  
+  // Check if height range changed significantly (background environments don't change height much)
+  const newHeightRange = getHeightRange(newPoints);
+  const oldRange = userData.heightRange || { min: 0, max: 10 };
+  const heightRangeChange = Math.abs(newHeightRange.max - newHeightRange.min) - Math.abs(oldRange.max - oldRange.min);
+  if (Math.abs(heightRangeChange) > 2.0) return true; // Larger threshold for background
+  
+  // Check hash difference strength (simple collision detection)
+  const hashDifference = Math.abs(newDataHash - userData.lastDataHash);
+  if (hashDifference < 1000) return false; // Very similar data, skip update
+  
+  return false; // Default: skip background update
+}
+
+// Determine if colors should be updated based on point type and changes
+function shouldUpdatePointCloudColors(pointCloud, newPoints, newHeightRange) {
+  const userData = pointCloud.userData;
+  const pointType = userData.pointType;
+  const oldRange = userData.heightRange || { min: 0, max: 10 };
+  
+  if (pointType === 'foreground') {
+    // Foreground: update colors if height range changed moderately
+    return (Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
+            Math.abs(newHeightRange.max - oldRange.max) > 0.5);
+  } else if (pointType === 'background') {
+    // Background: only update colors if height range changed significantly
+    return (Math.abs(newHeightRange.min - oldRange.min) > 2.0 || 
+            Math.abs(newHeightRange.max - oldRange.max) > 2.0);
+  }
+  
+  // Default behavior
+  return (Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
+          Math.abs(newHeightRange.max - oldRange.max) > 0.5);
 }
 
 
 
-function getColorsByHeight(points) {
-  if (!points || points.length === 0) return [];
-  // Compute distances
-  const heights = points.map(pt => pt[2]);
-  const min = 0;
-  const max = 10;
-  // Avoid division by zero
-  const range = max - min || 1;
-  // Map to colors
-  return heights.map(d => getViridisColor((d - min) / range)).flat();
+// Legacy function kept for compatibility - now uses optimized version
+function getColorsByHeight(points, colorMap = 'jet') {
+  return getColorsByHeightOptimized(points, null, colorMap);
 }

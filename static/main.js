@@ -79,13 +79,13 @@ class PointCloudApp {
                 {
                     if (data.pc_type === "foreground") {
                         this.pointClouds[data.detector_id] = {
-                            foreground: createPointCloud(data.points),
-                            background: createPointCloud([]),
+                            foreground: createPointCloud(data.points, { pointType: 'foreground' }),
+                            background: createPointCloud([], { pointType: 'background' }),
                         };
                     } else if (data.pc_type === "background") {
                         this.pointClouds[data.detector_id] = {
-                            foreground: createPointCloud([]),
-                            background: createPointCloud(data.points),
+                            foreground: createPointCloud([], { pointType: 'foreground' }),
+                            background: createPointCloud(data.points, { pointType: 'background', colorMap: 'viridis' }),
                         };
                     }
                     else {
