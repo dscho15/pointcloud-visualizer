@@ -55,6 +55,10 @@ class PointCloudApp {
         this.setupAutoSave();
         const scene = this.sceneManager.getScene();
 
+        // Setup correct intersection and roads
+        await this.setupIntersectionUI();
+
+
         enableRoadMarkingDrawing(
             scene,
             this.sceneManager.getCamera(),
@@ -152,6 +156,86 @@ class PointCloudApp {
             // },
         });
     }
+    async setupIntersectionUI() {
+        const dropdown = document.getElementById("intersection-select");
+        const loadBtn = document.getElementById("load-intersection-btn");
+        const toggleFormBtn = document.getElementById("toggle-new-intersection-form");
+        const form = document.getElementById("new-intersection-form");
+        const saveBtn = document.getElementById("create-intersection-btn");
+    
+        // --- Toggle form ---
+        toggleFormBtn.addEventListener("click", () => {
+            form.style.display = form.style.display === "none" ? "block" : "none";
+        });
+    
+        // --- Load intersections into dropdown ---
+        const refreshDropdown = async () => {
+            dropdown.innerHTML = `<option value="">-- Select Intersection --</option>`;
+            try {
+                const res = await fetch("/api/intersections");
+                const data = await res.json();
+                data.intersections.forEach((name) => {
+                    const opt = document.createElement("option");
+                    opt.value = name;
+                    opt.textContent = name;
+                    dropdown.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("Failed to fetch intersections", err);
+            }
+        };
+        await refreshDropdown();
+    
+        // --- Load selected intersection ---
+        loadBtn.addEventListener("click", async () => {
+            const name = dropdown.value;
+            if (!name) return;
+            try {
+                const res = await fetch(`/api/intersections/${name}`);
+                if (!res.ok) throw new Error("Failed to load");
+                const data = await res.json();
+                console.log("Loaded intersection:", data);
+    
+                // TODO: You can now reset road network, satellite plane, etc.
+                await loadRoadNetwork(this.sceneManager.getScene(), data.roadnet);
+            } catch (err) {
+                console.error("Error loading intersection", err);
+            }
+        });
+    
+        // --- Create new intersection ---
+        saveBtn.addEventListener("click", async () => {
+            const name = document.getElementById("new-intersection-name").value.trim();
+            const lat = parseFloat(document.getElementById("new-intersection-lat").value);
+            const lon = parseFloat(document.getElementById("new-intersection-lon").value);
+    
+            if (!name || isNaN(lat) || isNaN(lon)) {
+                alert("Please enter valid name, lat, lon");
+                return;
+            }
+    
+            try {
+                const res = await fetch("/api/intersections", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, lat, lon }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Failed to create");
+                }
+                const data = await res.json();
+                console.log("Created intersection:", data);
+                form.style.display = "none";
+                await refreshDropdown();
+                dropdown.value = name;
+            } catch (err) {
+                console.error("Error creating intersection", err);
+                alert("Failed to create intersection: " + err.message);
+            }
+        });
+    }
+    
 
     setupAutoSave() {
         // Auto-save settings every 10 seconds if there are changes

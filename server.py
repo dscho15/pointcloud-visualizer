@@ -4,7 +4,7 @@ import random
 import asyncio
 from pathlib import Path
 import time
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
@@ -12,6 +12,7 @@ from natsort import natsorted
 import math
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
+from server_helpers import  load_roadnet_dict, find_overlaps
 
 app = FastAPI()
 
@@ -23,6 +24,11 @@ message_queue = asyncio.Queue()
 
 # Store current settings (in-memory for this example)
 current_settings = {}
+
+
+INTERSECTIONS_DIR = Path("data/intersections")
+INTERSECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 # -----------------------------
 # Pydantic models for API
@@ -178,9 +184,47 @@ async def save_roadnet(data: dict):
 
 @app.get("/api/roadnet")
 async def get_roadnet():
-    if Path("roadnet.json").exists():
-        return json.loads(Path("roadnet.json").read_text())
-    return {"Approaches": []}
+    return load_roadnet_dict()
+
+@app.st("api/roadnet/overlaps")
+async def find_overlaps(query):
+    roadnet = load_roadnet_dict()
+    return find_overlaps(query, roadnet)
+
+
+@app.get("/api/intersections")
+async def list_intersections():
+    """List all available intersections"""
+    files = natsorted([f.stem for f in INTERSECTIONS_DIR.glob("*.json")])
+    return {"intersections": files}
+
+@app.get("/api/intersections/{name}")
+async def get_intersection(name: str):
+    """Load one intersection JSON"""
+    file_path = INTERSECTIONS_DIR / f"{name}.json"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Intersection {name} not found")
+    return json.loads(file_path.read_text())
+
+@app.post("/api/intersections")
+async def create_intersection(intersection):
+    """Create a new intersection file"""
+    file_path = INTERSECTIONS_DIR / f"{intersection.name}.json"
+    if file_path.exists():
+        raise HTTPException(status_code=400, detail="Intersection already exists")
+
+    # Basic structure to start with
+    data = {
+        "name": intersection.name,
+        "lat": intersection.lat,
+        "lon": intersection.lon,
+        "created": time.time(),
+        "roadnet": {}
+    }
+    file_path.write_text(json.dumps(data, indent=2))
+    return {"status": "success", "message": "Intersection created", "intersection": data}
+
+
 
 # -----------------------------
 # Run the server

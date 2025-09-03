@@ -116,7 +116,12 @@ export async function saveRoadNetwork() {
 
 
 // load roadnetwork from server
-export async function loadRoadNetwork(scene) {
+export async function loadRoadNetwork(scene, roadnetData = null) {
+  if (!roadnetData) {  // TODO: add roadnet as input the correct places, now its always null
+    const res = await fetch("/api/roadnet");
+    roadnetData = await res.json();
+  }
+  
   const res = await fetch('/api/roadnet');
   const data = await res.json();
   console.log("Loaded roadNetwork:", data);

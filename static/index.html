@@ -36,6 +36,48 @@
     backdrop-filter: blur(10px);
   ">
     
+    <!-- Intersection Management Section -->
+<div class="control-section" style="margin-bottom: 15px;">
+  <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #00BCD4; border-bottom: 2px solid #00BCD4; padding-bottom: 5px;">
+    Intersection Management
+  </h3>
+
+  <!-- Select / Load -->
+  <label for="intersection-select" style="font-size: 14px; display: block; margin-bottom: 5px;">
+    <strong>Load Intersection:</strong>
+  </label>
+  <select id="intersection-select" style="width: 100%; margin-bottom: 8px; padding: 5px; font-size: 14px; background: #555; color: white; border: 1px solid #666; border-radius: 4px;">
+    <option value="">-- Select Intersection --</option>
+    <!-- Populated dynamically from backend -->
+  </select>
+  <button id="load-intersection-btn" style="width: 100%; margin-bottom: 12px; padding: 6px; font-size: 13px; background: #00BCD4; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    📂 Load Selected
+  </button>
+
+  <!-- Create New -->
+  <button id="toggle-new-intersection-form" style="width: 100%; margin-bottom: 10px; padding: 6px; font-size: 13px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    ➕ Create New Intersection
+  </button>
+
+  <div id="new-intersection-form" style="display: none; padding: 8px; background: rgba(0,188,212,0.1); border-left: 3px solid #00BCD4; border-radius: 4px;">
+    <label style="font-size: 14px; display:block; margin-bottom: 4px;">Name:</label>
+    <input id="new-intersection-name" type="text" style="width:100%; margin-bottom:8px; padding:4px; font-size:13px; border:1px solid #666; border-radius:4px; background:#555; color:white;">
+
+    <label style="font-size: 14px; display:block; margin-bottom: 4px;">Latitude:</label>
+    <input id="new-intersection-lat" type="number" step="0.000001" style="width:100%; margin-bottom:8px; padding:4px; font-size:13px; border:1px solid #666; border-radius:4px; background:#555; color:white;">
+
+    <label style="font-size: 14px; display:block; margin-bottom: 4px;">Longitude:</label>
+    <input id="new-intersection-lon" type="number" step="0.000001" style="width:100%; margin-bottom:12px; padding:4px; font-size:13px; border:1px solid #666; border-radius:4px; background:#555; color:white;">
+
+    <button id="create-intersection-btn" style="width:100%; padding:6px; font-size:13px; background:#00BCD4; color:white; border:none; border-radius:4px; cursor:pointer;">
+      💾 Save Intersection
+    </button>
+  </div>
+</div>
+
+
+
+
     <!-- Point Cloud Controls Section -->
     <div class="control-section">
       <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #4CAF50; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Point Cloud Controls</h3>
