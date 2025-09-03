@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { getCurrentRoadWidth } from './controls.js';
-
+import { saveRoadNetwork, addLane, updateRoadTreeUI, showAddLanePopup, roadNetwork } from './roadnetwork_handler.js';
 let currentPoints = [];
-let polylines = [];
-let roadMeshes = [];
+export let polylines = [];
+export let roadMeshes = [];
 let currentLine = null;
 let selectedRoadIndex = null;
+
 
 export function enableRoadMarkingDrawing(scene, camera, renderer) {
   // (Removed rotateCameraAroundPoint and orbitcontrols integration as requested)
@@ -117,30 +118,45 @@ createKeybindsMenu();
   renderer.domElement.addEventListener('dblclick', () => {
     if (currentPoints.length > 1) {
       // Use current width from UI
-      const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 0.06;
+      const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 2.0;
       const curve = new THREE.CatmullRomCurve3(currentPoints);
       const roadMesh = createRoadMeshFromSpline(curve, width, 100);
       roadMesh.userData.width = width;
       scene.add(roadMesh);
       polylines.push(currentPoints.map(p => p.clone()));
       roadMeshes.push(roadMesh);
-      selectRoad(polylines.length - 1, scene);
+      
+      showAddLanePopup(currentPoints, width, scene, (app_id, poly, width, type) => {
+            addLane(app_id, poly, width, type);  
+            updateRoadTreeUI();
+            saveRoadNetwork();
+            // 2. Build the *final* road mesh
+            const curve = new THREE.CatmullRomCurve3(poly);
+            const finalMesh = createRoadMeshFromSpline(curve, width, 100);
+            finalMesh.userData = { lane_id: Date.now(), app_id, type, width };
+            scene.add(finalMesh);
+            roadMeshes.push(finalMesh);
+            polylines.push(poly.map(p => p.clone()));
+
+            // 3. Cleanup
+            if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
+            currentPoints = [];
+            updateRoadUI();
+
+      });
+ 
+    
+
     }
-    // Remove the current drawing line and point markers
-    if (currentLine) {
-      scene.remove(currentLine);
-      currentLine = null;
-    }
-    clearPointMarkers();
-    currentPoints = [];
-    updateRoadUI();
+    
   });
 }
 
 // --- Ribbon/Road mesh from spline ---
-function createRoadMeshFromSpline(curve, width = 0.06, segments = 100, getHeight = null) {
+export function createRoadMeshFromSpline(curve, width = 2, segments = 100, getHeight = null) {
   const halfWidth = width / 2;
   const points = curve.getPoints(segments);
+
   const leftSide = [];
   const rightSide = [];
   const uvs = [];
@@ -211,6 +227,11 @@ function createRoadMeshFromSpline(curve, width = 0.06, segments = 100, getHeight
   dashedLines.push(leftLine, rightLine);
 
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData = { width,
+    centerline: points.map(p => [p.x, p.y]), 
+    leftSide: leftSide.map(p => [p.x, p.y]), 
+    rightSide: rightSide.map(p => [p.x, p.y])
+   };
   // Add dashed lines to scene when mesh is added
   mesh._dashedLines = dashedLines;
   mesh._dashedLinesAdded = false;
@@ -254,16 +275,16 @@ function selectRoad(index, scene) {
     roadMeshes[selectedRoadIndex].material.emissive = new THREE.Color(0x444444);
     roadMeshes[selectedRoadIndex].material.color.set(0x444444);
     // --- Add width UI sync for selected road ---
-    const slider = document.getElementById('road-width-slider');
+    // const slider = document.getElementById('road-width-slider');
     const valueBox = document.getElementById('road-width-value');
-    if (slider && valueBox && roadMeshes[selectedRoadIndex].userData.width) {
-      slider.value = roadMeshes[selectedRoadIndex].userData.width;
+    if (valueBox && roadMeshes[selectedRoadIndex].userData.width) {
+      // slider.value = roadMeshes[selectedRoadIndex].userData.width;
       valueBox.value = roadMeshes[selectedRoadIndex].userData.width;
     }
     // Listen for width changes and update mesh
-    if (slider && valueBox) {
+    if ( valueBox) {
       // Remove previous listeners
-      slider.oninput = valueBox.oninput = null;
+      // slider.oninput = valueBox.oninput = null;
       const updateWidth = (val) => {
         const w = parseFloat(val);
         if (!w || w < 0.01 || w > 0.2) return;
@@ -281,8 +302,8 @@ function selectRoad(index, scene) {
         roadMeshes[selectedRoadIndex] = newMesh;
         selectRoad(selectedRoadIndex, scene); // Reselect to update UI
       };
-      slider.oninput = (e) => { valueBox.value = e.target.value; updateWidth(e.target.value); };
-      valueBox.oninput = (e) => { slider.value = e.target.value; updateWidth(e.target.value); };
+      // slider.oninput = (e) => { valueBox.value = e.target.value; updateWidth(e.target.value); };
+      // valueBox.oninput = (e) => { slider.value = e.target.value; updateWidth(e.target.value); };
     }
   }
   updateRoadUI();
@@ -290,20 +311,44 @@ function selectRoad(index, scene) {
 
 function deleteSelectedRoad(scene) {
   if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
-    // Remove dashed lines from scene if present
     const mesh = roadMeshes[selectedRoadIndex];
+
+    // Remove dashed lines if present
     if (mesh._dashedLines) {
       for (const l of mesh._dashedLines) {
         if (scene.children.includes(l)) scene.remove(l);
       }
     }
+
+    // Remove mesh from scene
     scene.remove(mesh);
+
+    // Grab app_id + lane_id from mesh metadata
+    const { app_id, lane_id } = mesh.userData;
+
+    // Remove from arrays
     roadMeshes[selectedRoadIndex] = null;
     polylines[selectedRoadIndex] = null;
     selectedRoadIndex = null;
     updateRoadUI();
+
+    // Remove lane from roadNetwork
+    const approach = roadNetwork.Approaches.find(a => a.app_id === app_id);
+    if (approach) {
+      approach.lanes = approach.lanes.filter(lane => lane.lane_id !== lane_id);
+
+      // If approach has no lanes, remove the whole approach
+      if (approach.lanes.length === 0) {
+        roadNetwork.Approaches = roadNetwork.Approaches.filter(a => a.app_id !== app_id);
+      }
+    }
+
+    // Update UI + save to server
+    updateRoadTreeUI();
+    saveRoadNetwork();
   }
 }
+
 
 function updateRoadUI() {
   const delBtn = document.getElementById('delete-road-btn');
@@ -349,9 +394,12 @@ function updateCurrentLine(scene) {
   scene.add(currentLine);
 }
 
-export function getAllRoadMarkings() {
-  return polylines.filter(p => p);
-}
+
+
+
+
+
+
 
 
 // Expose for main.js

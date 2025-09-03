@@ -44,7 +44,7 @@
       <div style="margin-bottom: 12px; padding: 8px; background: rgba(76,175,80,0.1); border-radius: 4px; border-left: 3px solid #4CAF50;">
         <label style="font-size: 14px; display: flex; align-items: center;">
           <input id="global-background-toggle" type="checkbox" checked style="margin-right: 8px;" />
-          <strong>Show All Background Point Clouds</strong>
+          <strong>Show Background Point Cloud</strong>
         </label>
       </div>
       
@@ -85,7 +85,7 @@
 
     <!-- Satellite Controls Section -->
     <div class="control-section">
-      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #FF9800; border-bottom: 2px solid #FF9800; padding-bottom: 5px;">Satellite & Grid</h3>
+      <h3 style="display: none; margin: 0 0 10px 0; font-size: 16px; color: #FF9800; border-bottom: 2px solid #FF9800; padding-bottom: 5px;">Satellite & Grid</h3>
       
       <label style="font-size: 14px; display: flex; align-items: center; margin-bottom: 8px;">
         <input type="checkbox" id="show-satellite" checked style="margin-right: 8px;">
@@ -97,9 +97,10 @@
         Show Grid
       </label>
 
+      <button id="toggle-sat-controls" style="width: 100%; margin-bottom: 10px; padding: 6px; font-size: 13px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Show Satellite Controls</button>
+
       <!-- Satellite Origin Positioning -->
-      <div style="margin-bottom: 12px; padding: 8px; background: rgba(255,152,0,0.1); border-radius: 4px; border-left: 3px solid #FF9800;">
-        <button id="set-satellite-origin-btn" style="
+      <div id="sat-controls" style="display: none; margin-bottom: 12px; padding: 8px; background: rgba(255,152,0,0.1); border-radius: 4px; border-left: 3px solid #FF9800;">        <button id="set-satellite-origin-btn" style="
           width: 100%; 
           padding: 8px; 
           font-size: 14px; 
@@ -130,7 +131,7 @@
           border-radius: 4px; 
           cursor: pointer;
         ">Reset to Center</button>
-      </div>
+      
       
       <!-- Manual Position Controls -->
       <div style="margin-bottom: 8px;">
@@ -159,6 +160,7 @@
           <span id="sat-scale-value">1.00</span>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- Visualization Controls Section -->
@@ -186,8 +188,8 @@
       </label>
     </div>
 
-    <!-- Speed Legend Section -->
-    <div class="control-section">
+    <!-- Speed Legend Section (currently not used)-->
+    <!-- <div class="control-section">
       <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #9C27B0; border-bottom: 2px solid #9C27B0; padding-bottom: 5px;">Speed Legend</h3>
       
       <div style="display: flex; align-items: center; gap: 10px;">
@@ -204,7 +206,7 @@
           border-radius: 2px;
         "></div>
       </div>
-    </div>
+    </div> -->
 
     <!-- Settings Management Section -->
     <div class="control-section">
@@ -227,8 +229,7 @@
     </div>
 
     <!-- Road Controls Section (Currently Disabled) -->
-    
-    <!-- <div class="control-section">
+    <div class="control-section">
       <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #607D8B; border-bottom: 2px solid #607D8B; padding-bottom: 5px;">Road Controls</h3>
       
       <div style="display: flex; gap: 5px; margin-bottom: 10px;">
@@ -237,14 +238,52 @@
         <button id="edit-road-btn" disabled style="flex: 1; padding: 6px; font-size: 12px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
       </div>
       
-      <div style="margin-bottom: 8px;">
-        <label style="font-size: 14px; display: block; margin-bottom: 2px;">Road Width:</label>
-        <input id="road-width-slider" type="range" min="1" max="3" step="0.01" value="1.5" style="width: 70%;">
-        <input id="road-width-value" type="number" min="1" max="3" step="0.01" value="1.5" style="width: 25%; margin-left: 5px; font-size: 12px;">
-      </div>
+      
       
       <span id="road-status" style="font-size: 12px; color: #ccc;"></span>
-    </div> -->
+    </div>
+
+
+    <!-- <button id="toggle-road-tree" style="width: 100%; margin-bottom: 10px; padding: 6px; font-size: 13px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">Show Road Net</button> -->
+    <div id="road-tree" style="color: #607D8B; padding:10px; border:1px solid #607D8B; margin-top:10px;">
+  <!-- The road tree UI will be populated here -->
+  </div>
+  <!-- Add Lane Popup -->
+ <div id="add-lane-popup" style="
+    display:none; 
+    position:fixed; 
+    top:50%; left:50%; 
+    transform:translate(-50%, -50%); 
+    background:#ffffff; 
+    border:1px solid #ccc; 
+    border-radius:8px; 
+    padding:20px; 
+    box-shadow:0 4px 12px rgba(0,0,0,0.3); 
+    z-index:10000;
+    width: 220px;
+  ">
+  <h3 style="font-size: 16px; color: #607D8B; border-bottom: 2px solid #607D8B; padding-bottom: 5px; margin-bottom: 10px;">
+    Lane Settings
+  </h3>
+
+  <label style="font-size: 14px; display:block; margin-bottom: 4px; color:#607D8B;">Approach ID:</label>
+  <input type="number" id="lane-approach-id" min="1" style="width:100%; margin-bottom:8px;">
+
+  <label style="font-size: 14px; display:block; margin-bottom: 4px; color:#607D8B;">Type:</label>
+  <select id="lane-type" style="width:100%; margin-bottom:8px;">
+    <option value="ingress">Ingress</option>
+    <option value="egress">Egress</option>
+  </select>
+
+  <label style="font-size: 14px; display:block; margin-bottom: 4px; color:#607D8B;">Road Width [m]:</label>
+  <input id="road-width-value" type="number" min="2" max="5" step="0.1" value="2" style="width:100%; margin-bottom:12px; font-size:12px;">
+
+  <button id="lane-save-btn" style="width:100%; padding:6px; font-size:12px; background:#666; color:white; border:none; border-radius:4px; cursor:pointer;">
+    Save
+  </button>
+</div>
+
+
    
     
   </div>

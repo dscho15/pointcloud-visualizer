@@ -170,6 +170,18 @@ async def websocket_endpoint(websocket: WebSocket):
         clients.discard(websocket)
         print("Client disconnected")
 
+
+@app.post("/api/roadnet")
+async def save_roadnet(data: dict):
+    Path("roadnet.json").write_text(json.dumps(data, indent=2))
+    return {"status": "success"}
+
+@app.get("/api/roadnet")
+async def get_roadnet():
+    if Path("roadnet.json").exists():
+        return json.loads(Path("roadnet.json").read_text())
+    return {"Approaches": []}
+
 # -----------------------------
 # Run the server
 # -----------------------------
@@ -178,7 +190,7 @@ if __name__ == "__main__":
     print("Starting server on http://localhost:8000")
     uvicorn.run(
         "server:app",
-        host="192.168.1.3",
+        host="192.168.1.12",
         port=8000,
         reload=True,
         loop="uvloop",       # Faster event loop

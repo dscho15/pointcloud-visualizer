@@ -39,7 +39,7 @@ function setupPointCloudControls() {
   const pcVisible = document.getElementById('pc-visible');
   const backgroundVisible = document.getElementById('background-visible');
   const globalBackgroundToggle = document.getElementById('global-background-toggle');
-  const toggleBtn = document.getElementById('toggle-pc-controls');
+  const pcControlBtn = document.getElementById('toggle-pc-controls');
   const pcX = document.getElementById('pc-x');
   const pcY = document.getElementById('pc-y');
   const pcZ = document.getElementById('pc-z');
@@ -72,15 +72,15 @@ function setupPointCloudControls() {
     const detectorId = pcSelect.value;
     if (!detectorId || !pointClouds[detectorId]) {
       pcControls.style.display = 'none';
-      toggleBtn.style.display = 'none';
+      pcControlBtn.style.display = 'none';
       selectedPCs = null;
       return;
     }
 
     selectedPCs = pointClouds[detectorId];
     pcControls.style.display = 'block';
-    toggleBtn.style.display = 'inline-block';
-    toggleBtn.textContent = 'Hide Controls';
+    pcControlBtn.style.display = 'inline-block';
+    pcControlBtn.textContent = 'Hide Controls';
 
     // Update UI values to match selected point cloud (use foreground as reference)
     const foregroundPC = selectedPCs.foreground;
@@ -164,14 +164,14 @@ function setupPointCloudControls() {
   }
 
   // Toggle button
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
+  if (pcControlBtn) {
+    pcControlBtn.addEventListener('click', () => {
       if (pcControls.style.display === 'none') {
         pcControls.style.display = 'block';
-        toggleBtn.textContent = 'Hide Controls';
+        pcControlBtn.textContent = 'Hide Controls';
       } else {
         pcControls.style.display = 'none';
-        toggleBtn.textContent = 'Show Controls';
+        pcControlBtn.textContent = 'Show Controls';
       }
     });
   }
@@ -181,6 +181,9 @@ function setupPointCloudControls() {
 function setupSatelliteControls() {
   const showSatelliteCheckbox = document.getElementById('show-satellite');
   const showGridCheckbox = document.getElementById('show-grid-checkbox');
+  const satControls = document.getElementById('sat-controls');
+
+  const satControlBtn = document.getElementById('toggle-sat-controls');
   const satX = document.getElementById('sat-x');
   const satY = document.getElementById('sat-y');
   const satRotZ = document.getElementById('sat-rot-z');
@@ -238,6 +241,19 @@ function setupSatelliteControls() {
       satScaleValue.textContent = value.toFixed(2);
       // Use the origin controller for scaling
       satelliteOriginController.scaleSatellite(value);
+    });
+  }
+
+  // Toggle button
+  if (satControlBtn) {
+    satControlBtn.addEventListener('click', () => {
+      if (satControls.style.display === 'none') {
+        satControls.style.display = 'block';
+        satControlBtn.textContent = 'Hide Controls';
+      } else {
+        satControls.style.display = 'none';
+        satControlBtn.textContent = 'Show Controls';
+      }
     });
   }
 }

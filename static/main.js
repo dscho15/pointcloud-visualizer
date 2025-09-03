@@ -6,8 +6,8 @@ import { addOBBtoPointcloud } from './obb.js';
 import { SceneManager } from './scene-manager.js';
 import { initUIControls, updatePointCloudDropdown, getHeadingVisible, setSatellitePlane } from './ui-controls.js';
 import { settingsManager } from './settings-manager.js';
-// import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
-
+import { enableRoadMarkingDrawing, setupRoadUI } from './roadmarkings.js';
+import { loadRoadNetwork } from './roadnetwork_handler.js';
 
 // Initialize the application
 class PointCloudApp {
@@ -19,7 +19,7 @@ class PointCloudApp {
         this.init();
     }
 
-    init() {
+    async init() {
         // Initialize UI controls with scene references
         const objects = this.sceneManager.getObjects();
         objects.pointClouds = this.pointClouds;
@@ -53,6 +53,21 @@ class PointCloudApp {
     
         // Auto-save settings when changes occur (optional)
         this.setupAutoSave();
+        const scene = this.sceneManager.getScene();
+
+        enableRoadMarkingDrawing(
+            scene,
+            this.sceneManager.getCamera(),
+            this.sceneManager.getRenderer()
+        );
+
+        setupRoadUI(
+            scene,
+            this.sceneManager.getCamera(),
+            this.sceneManager.getRenderer()
+        );
+
+        await loadRoadNetwork(scene);
 
     }
 

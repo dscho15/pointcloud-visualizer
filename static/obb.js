@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { getAllRoadMarkings } from './roadmarkings.js';
 import { updateHeatmap } from './heatmap.js';
 
 const obbMap = {};
@@ -92,9 +91,7 @@ export function addOBBtoPointcloud(pointCloud, obbData, sceneObjects, scene) {
       if (!activeTrackIds.has(Number(track_id))) {
         delete track_to_detector[track_id];
       }
-  
     }
   }
-  
 }
 
