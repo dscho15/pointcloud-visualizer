@@ -12,7 +12,8 @@ from natsort import natsorted
 import math
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
-from server_helpers import  load_roadnet_dict, find_overlaps
+from server_helpers import  load_roadnet_dict, calc_overlaps,IntersectionModel, OverlapQuery
+from satellite import create_satellite_img
 
 app = FastAPI()
 
@@ -26,8 +27,10 @@ message_queue = asyncio.Queue()
 current_settings = {}
 
 
+
 INTERSECTIONS_DIR = Path("data/intersections")
 INTERSECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+current_intersection = None
 
 
 # -----------------------------
@@ -46,6 +49,7 @@ class SettingsModel(BaseModel):
 # Serve static files
 # -----------------------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/data/satellite", StaticFiles(directory="data/satellite"), name="satellite")
 
 @app.get("/")
 def get_index():
@@ -178,18 +182,37 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @app.post("/api/roadnet")
-async def save_roadnet(data: dict):
-    Path("roadnet.json").write_text(json.dumps(data, indent=2))
-    return {"status": "success"}
+async def save_roadnet( data: dict):
+    """Save roadnet data inside a specific intersection JSON"""
+    file_path = INTERSECTIONS_DIR / f"{current_intersection}.json"
+    if not file_path.exists():
+        print("Not found: ", file_path)
+        raise HTTPException(status_code=404, detail=f"No Intersection chosen or configuration not found")
+
+    # Load existing intersection
+    intersection = json.loads(file_path.read_text())
+    intersection["roadnet"] = data
+    file_path.write_text(json.dumps(intersection, indent=2))
+
+    return {"status": "success", "message": f"Roadnet saved for {current_intersection}"}
+
 
 @app.get("/api/roadnet")
 async def get_roadnet():
-    return load_roadnet_dict()
+    """Get roadnet data from a specific intersection JSON"""
+    return load_roadnet_dict(current_intersection)
+    # file_path = INTERSECTIONS_DIR / f"{current_intersection}.json"
+    # if not file_path.exists():
+    #     print("Not found: ", file_path)
+    #     raise HTTPException(status_code=404, detail=f"No Intersection chosen or configuration not found")
+    # intersection = json.loads(file_path.read_text())
+    # return intersection.get("roadnet", {})
 
-@app.st("api/roadnet/overlaps")
-async def find_overlaps(query):
-    roadnet = load_roadnet_dict()
-    return find_overlaps(query, roadnet)
+
+@app.post("/api/roadnet/overlaps")
+async def find_overlaps(query: OverlapQuery):
+    roadnet = load_roadnet_dict(current_intersection)
+    return calc_overlaps(query, roadnet)
 
 
 @app.get("/api/intersections")
@@ -201,24 +224,32 @@ async def list_intersections():
 @app.get("/api/intersections/{name}")
 async def get_intersection(name: str):
     """Load one intersection JSON"""
+    global current_intersection
+    current_intersection = name
     file_path = INTERSECTIONS_DIR / f"{name}.json"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Intersection {name} not found")
     return json.loads(file_path.read_text())
 
 @app.post("/api/intersections")
-async def create_intersection(intersection):
+async def create_intersection(intersection: IntersectionModel):
     """Create a new intersection file"""
+    global current_intersection
+    current_intersection = intersection.name
     file_path = INTERSECTIONS_DIR / f"{intersection.name}.json"
+
     if file_path.exists():
         raise HTTPException(status_code=400, detail="Intersection already exists")
 
+    sat_path = f"data/satellite/{intersection.name}.png"
+    create_satellite_img((intersection.lat, intersection.lon),sat_path)
     # Basic structure to start with
     data = {
         "name": intersection.name,
         "lat": intersection.lat,
         "lon": intersection.lon,
         "created": time.time(),
+        "satellite_image": sat_path,
         "roadnet": {}
     }
     file_path.write_text(json.dumps(data, indent=2))

@@ -117,38 +117,42 @@ createKeybindsMenu();
 
   renderer.domElement.addEventListener('dblclick', () => {
     if (currentPoints.length > 1) {
-      // Use current width from UI
-      const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 2.0;
-      const curve = new THREE.CatmullRomCurve3(currentPoints);
-      const roadMesh = createRoadMeshFromSpline(curve, width, 100);
-      roadMesh.userData.width = width;
-      scene.add(roadMesh);
-      polylines.push(currentPoints.map(p => p.clone()));
-      roadMeshes.push(roadMesh);
-      
-      showAddLanePopup(currentPoints, width, scene, (app_id, poly, width, type) => {
-            addLane(app_id, poly, width, type);  
-            updateRoadTreeUI();
-            saveRoadNetwork();
-            // 2. Build the *final* road mesh
-            const curve = new THREE.CatmullRomCurve3(poly);
-            const finalMesh = createRoadMeshFromSpline(curve, width, 100);
+        const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 2.0;
+        const curve = new THREE.CatmullRomCurve3(currentPoints);
+
+        // Create temporary preview mesh (not added to roadMeshes)
+        let previewMesh = createRoadMeshFromSpline(curve, width, 100);
+        scene.add(previewMesh);
+
+        showAddLanePopup(currentPoints, width, scene, (app_id, poly, width, type) => {
+            // Remove preview mesh
+            scene.remove(previewMesh);
+            if (previewMesh.geometry) previewMesh.geometry.dispose();
+            if (previewMesh.material) previewMesh.material.dispose();
+
+            // 1. Add lane to roadNetwork
+            addLane(app_id, poly, width, type);
+
+            // 2. Build final mesh
+            const finalCurve = new THREE.CatmullRomCurve3(poly);
+            const finalMesh = createRoadMeshFromSpline(finalCurve, width, 100);
             finalMesh.userData = { lane_id: Date.now(), app_id, type, width };
             scene.add(finalMesh);
+
+            // 3. Add to global arrays
             roadMeshes.push(finalMesh);
             polylines.push(poly.map(p => p.clone()));
 
-            // 3. Cleanup
+            // 4. Update UI and save
+            updateRoadTreeUI();
+            saveRoadNetwork();
+
+            // 5. Cleanup
             if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
             currentPoints = [];
             updateRoadUI();
-
-      });
- 
-    
-
-    }
-    
+        });
+      }
   });
 }
 

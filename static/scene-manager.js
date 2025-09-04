@@ -1,6 +1,7 @@
 // 3D Scene Setup Module - Handles Three.js scene initialization
 import * as THREE from 'three';
 import { setupControls } from './controls.js';
+import { setSatellitePlane } from './ui-controls.js';
 
 export class SceneManager {
   constructor(canvas) {
@@ -25,7 +26,7 @@ export class SceneManager {
     this.setupLighting();
     this.setupGrid();
     this.setupHeatmapPlanes();
-    this.loadSatelliteImage();
+    // this.loadSatelliteImage();
     this.setupEventListeners();
   }
 
@@ -166,26 +167,66 @@ export class SceneManager {
     this.objects.maxSpeedTexture.needsUpdate = true;
   }
 
-  loadSatelliteImage() {
-    const textureLoader = new THREE.TextureLoader();
-    
-    textureLoader.load('/static/uncropped.png', (texture) => {
-      const satWidth = 200;
-      const satHeight = 220;
+  loadSatelliteImage(img_path) {
+  const textureLoader = new THREE.TextureLoader();
 
-      const satGeometry = new THREE.PlaneGeometry(satWidth, satHeight);
-      const satMaterial = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 1.0,
-      });
+  textureLoader.load(img_path, (texture) => {
+    const satWidth = 200;
+    const satHeight = 200;
+    if (this.objects.satellitePlane) {
+  this.scene.remove(this.objects.satellitePlane);
+  this.objects.satellitePlane.geometry.dispose();
+  this.objects.satellitePlane.material.map?.dispose();
+  this.objects.satellitePlane.material.dispose();
+}
 
-      this.objects.satellitePlane = new THREE.Mesh(satGeometry, satMaterial);
-      this.objects.satellitePlane.position.set(0, 0, -0.01);
-      this.scene.add(this.objects.satellitePlane);
-    });
-  }
+// always create a new plane
+const satGeometry = new THREE.PlaneGeometry(200, 200);
+const satMaterial = new THREE.MeshBasicMaterial({
+  map: texture,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 1.0,
+});
+
+this.objects.satellitePlane = new THREE.Mesh(satGeometry, satMaterial);
+this.objects.satellitePlane.position.set(0, 0, -0.01);
+this.scene.add(this.objects.satellitePlane);
+setSatellitePlane(this.objects.satellitePlane);
+
+//     if (this.objects.satellitePlane) {
+//       // clean up old material + texture
+//       this.objects.satellitePlane.material.map?.dispose();
+//       this.objects.satellitePlane.material.dispose();
+
+//       // create new material with the new texture
+//       this.objects.satellitePlane.material = new THREE.MeshBasicMaterial({
+//         map: texture,
+//         side: THREE.DoubleSide,
+//         transparent: true,
+//         opacity: 1.0,
+//       });
+
+//       texture.needsUpdate = true;
+//     }
+//  else {
+//       console.log("ELSEEEEEEEEEEEEEEEE")
+//       // 🔹 create plane on first load
+//       const satGeometry = new THREE.PlaneGeometry(satWidth, satHeight);
+//       const satMaterial = new THREE.MeshBasicMaterial({
+//         map: texture,
+//         side: THREE.DoubleSide,
+//         transparent: true,
+//         opacity: 1.0,
+//       });
+
+//       this.objects.satellitePlane = new THREE.Mesh(satGeometry, satMaterial);
+//       this.objects.satellitePlane.position.set(0, 0, -0.01);
+//       this.scene.add(this.objects.satellitePlane);
+//     }
+  });
+}
+
 
   setupEventListeners() {
     // Handle window resize

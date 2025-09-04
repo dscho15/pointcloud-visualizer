@@ -2,13 +2,20 @@ from pydantic import BaseModel, Field
 from typing import List, Tuple
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.ops import unary_union
-
+from pathlib import Path
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Body
+import json
 ROADNET_PATH = Path("roadnet.json")
+INTERSECTIONS_DIR = Path("data/intersections")
 
-def load_roadnet_dict() -> dict:
-    if ROADNET_PATH.exists():
-        return json.loads(ROADNET_PATH.read_text())
-    return {"Approaches": []}
+
+def load_roadnet_dict(current_intersection) -> dict:
+    file_path = INTERSECTIONS_DIR / f"{current_intersection}.json"
+    if not file_path.exists():
+        print("Not found: ", file_path)
+        raise HTTPException(status_code=404, detail=f"No Intersection chosen or configuration not found")
+    intersection = json.loads(file_path.read_text())
+    return intersection.get("roadnet", {})
 
 def safe_polygon(coords: List[Tuple[float, float]]) -> ShapelyPolygon:
     """
@@ -29,17 +36,17 @@ class OverlapQuery(BaseModel):
 class OverlapResult(BaseModel):
     app_id: int
     lane_id: int
-    type: str
-    segment_index: int
     direction_vector: Tuple[float, float]
-    overlap_area: float
     overlap_pct: float
 
-class OverlapResponse(BaseModel):
-    polygon_area: float
-    matches: List[OverlapResult]
 
-def find_overlaps(query: OverlapQuery, roadnet: dict):
+
+class IntersectionModel(BaseModel):
+    name: str
+    lat: float
+    lon: float
+
+def calc_overlaps(query: OverlapQuery, roadnet: dict):
     """
     Check the incoming polygon against all lane segments.
     Return all segments that overlap >= min_pct of the incoming polygon.
@@ -48,7 +55,7 @@ def find_overlaps(query: OverlapQuery, roadnet: dict):
 
     incoming = safe_polygon(query.polygon)
     if incoming.is_empty or incoming.area == 0:
-        raise HTTPException(status_code=400, detail="Incoming polygon is empty or degenerate")
+        raise Warning(status_code=400, detail="Incoming polygon is empty or degenerate")
 
     incoming_area = incoming.area
     min_fraction = query.min_pct / 100.0
@@ -59,10 +66,9 @@ def find_overlaps(query: OverlapQuery, roadnet: dict):
         app_id = app.get("app_id")
         for lane in app.get("lanes", []):
             lane_id = lane.get("lane_id")
-            lane_type = lane.get("type", "")
             segments = lane.get("segments", [])
 
-            for idx, seg in enumerate(segments):
+            for _, seg in enumerate(segments):
                 poly_coords = seg.get("polygon", [])
                 if len(poly_coords) < 3:
                     continue  # not a polygon
@@ -88,17 +94,14 @@ def find_overlaps(query: OverlapQuery, roadnet: dict):
                     matches.append(OverlapResult(
                         app_id=int(app_id),
                         lane_id=int(lane_id),
-                        type=str(lane_type),
-                        segment_index=idx,
                         direction_vector=dir_vec,
-                        overlap_area=float(inter_area),
                         overlap_pct=float(pct)
                     ))
 
     # Sort by highest overlap first (optional)
     matches.sort(key=lambda m: m.overlap_pct, reverse=True)
 
-    return OverlapResponse(
-        polygon_area=float(incoming_area),
-        matches=matches
-    )
+    return matches
+
+
+

@@ -193,6 +193,7 @@ function setupSatelliteControls() {
   if (showSatelliteCheckbox) {
     showSatelliteCheckbox.addEventListener('change', (e) => {
       if (satellitePlane) satellitePlane.visible = e.target.checked;
+      console.log(`Satellite image ${e.target.checked ? 'shown' : 'hidden'}`);
     });
   }
 

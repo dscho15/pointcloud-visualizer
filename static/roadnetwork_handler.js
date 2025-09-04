@@ -157,6 +157,41 @@ export async function loadRoadNetwork(scene, roadnetData = null) {
   updateRoadTreeUI();
 }
 
+export function clearRoadNetwork(sceneManager) {
+  const scene = sceneManager.getScene();
+  roadMeshes.forEach(obj => {
+      scene.remove(obj);
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+  });
+  const toRemove = [];
+
+  // Collect all meshes
+  scene.traverse((obj) => {
+    if (obj.isMesh || obj.isLine) toRemove.push(obj);
+  });
+
+  toRemove.forEach((mesh) => {
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) {
+      // If material is an array (multi-material mesh)
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((mat) => mat.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    }
+    if (mesh.parent) mesh.parent.remove(mesh);
+  });
+
+  // Clear array without reassigning
+  roadMeshes.length = 0;
+
+  // If you also track polylines, reset them
+  polylines.length = 0;
+  roadNetwork.Approaches.length = 0;
+  sceneManager.getScene().add(sceneManager.getObjects().gridHelper);
+}
 
 export function showAddLanePopup(poly, initialWidth, scene, onSave) {
   const popup = document.getElementById("add-lane-popup");
@@ -196,7 +231,6 @@ export function showAddLanePopup(poly, initialWidth, scene, onSave) {
     saveBtn.onclick = null;
     widthInput.oninput = null;
 
-    
   };
 
 

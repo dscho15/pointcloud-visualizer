@@ -1,0 +1,8 @@
+{
+  "name": "swtech",
+  "lat": 55.36349,
+  "lon": 10.490045,
+  "created": 1756974403.467017,
+  "satellite_image": "data/satellite/SWTech.png",
+  "roadnet": {}
+}

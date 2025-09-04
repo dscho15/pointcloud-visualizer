@@ -1,13 +1,18 @@
-
+import os
 import io
-import requests
-from collections import defaultdict
-from PIL import Image
-import math 
-import numpy as np
+import sys
+import math
 
-#API_KEY = "pk.eyJ1Ijoic3dhcmNvcGFsbSIsImEiOiJjbTl3bjI5cXowdHBlMmxzOXZvanZrdWY3In0.bBbAVRn74l-JlIDKAilosA"
+import requests
+from PIL import Image
+import numpy as np
+from collections import defaultdict
+tile_count = 0
 API_KEY = "sk.eyJ1Ijoic3dhcmNvcGFsbSIsImEiOiJjbWRpbXRjbmQwZTdvMmxxeXZzb3g2OHBhIn0.xObuob5UikDQ08b4D2dIDw"
+
+'''
+Satellite Image related functions
+'''
 def wgs2tile(lat: np.float64, lon = np.float64, zoom_level: int = 22, tile_size: int = 256):
     mercator = -math.log(math.tan((0.25 +  lat / 360) * math.pi))
     world_x = tile_size * (lon / 360 + 0.5)
@@ -18,6 +23,7 @@ def wgs2tile(lat: np.float64, lon = np.float64, zoom_level: int = 22, tile_size:
     tile_y = math.floor(pixel_y/tile_size)
     
     return (tile_x, tile_y), (pixel_x, pixel_y)
+    
 
 def all_tile_ids(nw_tile, ne_tile, sw_tile, se_tile):
     x_min = min(nw_tile[0], sw_tile[0])
@@ -31,7 +37,7 @@ def all_tile_ids(nw_tile, ne_tile, sw_tile, se_tile):
             tiles.append((x, y))
     return tiles
 
-def get_tiles(min_lon: np.float64, min_lat: np.float64, max_lon: np.float64, max_lat: np.float64, zoom_level, tile_size):
+def get_tiles(min_lon: np.float64, min_lat: np.float64, max_lon: np.float64, max_lat: np.float64, zoom_level: int = 22, tile_size: int = 256):
     nw_tile, nw_pixel = wgs2tile(max_lat, min_lon, zoom_level, tile_size)
     ne_tile, _ = wgs2tile(max_lat, max_lon, zoom_level, tile_size)
     sw_tile, _ = wgs2tile(min_lat, min_lon, zoom_level, tile_size)
@@ -42,7 +48,6 @@ def get_tiles(min_lon: np.float64, min_lat: np.float64, max_lon: np.float64, max
     lower_crop = se_pixel[1] - tile_size*(nw_tile[1])
   
     return all_tile_ids(nw_tile, ne_tile, sw_tile, se_tile), (left_crop, upper_crop, right_crop, lower_crop) 
-
 
 def create_full_image(all_columns: list):
     img = Image.new('RGB', (all_columns[0].width * len(all_columns), all_columns[0].height ))
@@ -63,7 +68,7 @@ def create_tile_column(all_tiles: list):
             paste_height+= img_height
         return column
     except Exception as e: 
-        print("Exception in create_tile_column: ", str(e))
+        print("Exception in create_tile_column: "+ str(e))
         return None
 
 def m2latlon(center_pnt, height, width):
@@ -84,15 +89,13 @@ def m2latlon(center_pnt, height, width):
     
     return min_lon, min_lat, max_lon, max_lat
 
-    
+def create_satellite_img(center_pnt: tuple, sat_path: str, height: int= 200, width: int = 200, zoom_level: int = 19, tile_size: int = 512): 
 
-def create_sat(center_pnt: tuple, height: int= 200, width: int = 200, zoom_level: int = 20, tile_size: int = 512): 
-    
     min_lon, min_lat, max_lon, max_lat = m2latlon(center_pnt=center_pnt, height=height, width=width)# west, south, east, north
-    print("min_lon, min_lat, max_lon, max_lat: ", min_lon, ", ",min_lat, ", ",max_lon, ", ",max_lat)
-    tiles, crop_bounds = get_tiles(min_lon=min_lon, min_lat=min_lat, max_lon=max_lon, max_lat=max_lat, zoom_level=zoom_level, tile_size=tile_size)
-    print("Tiles: ", len(tiles))
 
+    tiles, crop_bounds = get_tiles(min_lon, min_lat, max_lon, max_lat, zoom_level, tile_size)
+    global tile_count
+    tile_count += len(tiles)
     all_columns = []
 
     grouped = defaultdict(list)
@@ -100,45 +103,33 @@ def create_sat(center_pnt: tuple, height: int= 200, width: int = 200, zoom_level
         grouped[x].append(y)
 
     # Iterate through x and then all y for that x
-    cnt = 0
     for x in sorted(grouped):
         col_tiles = []
         for y in sorted(grouped[x]):
-            cnt+= 1
-            print("tile nr: ", cnt)
-            # url = 'https://api.mapbox.com/v4/mapbox.satellite/'+str(zoom_level) +'/' + str(x)  +'/'+  str(y) 
-            # url += '@2x.png' if tile_size == 512 else '.png'
-            url = f'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{tile_size}/{zoom_level}/{x}/{y}@2x?access_token={API_KEY}'
 
-            # params = {
-            #     'access_token': API_KEY              
-            # }
+            url = 'https://api.mapbox.com/v4/mapbox.satellite/'+str(zoom_level) +'/' + str(x)  +'/'+  str(y) 
+            url += '@2x.png' if tile_size == 512 else '.png'
             
-            response = requests.get(url)#, params=params)     
+            params = {
+                'access_token': API_KEY              
+            }
+            
+            response = requests.get(url, params=params)
+            
             if response.status_code == 200:
         
                 sat_tile = Image.open(io.BytesIO(response.content)).convert("RGB")
                 col_tiles.append(sat_tile)
         
-            else: 
-                print("Error while fetching mapbox satellite image: ", str(response.status_code))
+            else:
+                print(f"Error fetching the image: {response.status_code}")
         
         
         column_img = create_tile_column(col_tiles)
-        # column_img.save(str(x)+"column.png")
         all_columns.append(column_img)
                     
-    sat_png = create_full_image(all_columns)   
-    sat_png.save("uncropped.png")
+    sat_png = create_full_image(all_columns) 
     cropped = sat_png.crop(crop_bounds)
+    cropped.save(sat_path)
 
-    return cropped
-
-
-
-center_pnt = (55.363585, 10.490014)
-sat_img = create_sat(center_pnt)
-sat_img.save("test.png")
-           
-                    
-      
+  
