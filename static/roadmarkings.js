@@ -1,450 +1,532 @@
 import * as THREE from 'three';
 import { getCurrentRoadWidth } from './controls.js';
-import { saveRoadNetwork, addLane, updateRoadTreeUI, showAddLanePopup, roadNetwork } from './roadnetwork_handler.js';
+import { saveRoadNetwork, addLane, updateRoadTreeUI, showAddLanePopup, roadNetwork, clearAllArrows, clearArrowsForLane } from './roadnetwork_handler.js';
 let currentPoints = [];
+
 export let polylines = [];
 export let roadMeshes = [];
+
 let currentLine = null;
 let selectedRoadIndex = null;
 
 
 export function enableRoadMarkingDrawing(scene, camera, renderer) {
-  // (Removed rotateCameraAroundPoint and orbitcontrols integration as requested)
-  // Store point marker meshes for current drawing
-  let pointMarkers = [];
+    // (Removed rotateCameraAroundPoint and orbitcontrols integration as requested)
+    // Store point marker meshes for current drawing
+    let pointMarkers = [];
 
-  // Make clearPointMarkers accessible outside this function
-  window.__clearRoadPointMarkers = clearPointMarkers;
-  function clearPointMarkers() {
-    for (const marker of pointMarkers) scene.remove(marker);
-    pointMarkers = [];
-  }
-
-  // Keyboard shortcuts now trigger button clicks
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'r') {
-      const btn = document.getElementById('reset-road-btn');
-      if (btn) btn.click();
-    } else if (event.key === 'n') {
-      const btn = document.getElenmentById('new-road-btn');
-      if (btn) btn.click();
-    } else if (event.key === 'e') {
-      const btn = document.getElementById('edit-road-btn');
-      if (btn) btn.click();
-    } else if (event.key === 'd') {
-      const btn = document.getElementById('delete-road-btn');
-      if (btn) btn.click();
+    // Make clearPointMarkers accessible outside this function
+    window.__clearRoadPointMarkers = clearPointMarkers;
+    function clearPointMarkers() {
+        for (const marker of pointMarkers) scene.remove(marker);
+        pointMarkers = [];
     }
-  });
-// --- Keybinds Help Menu ---
-function createKeybindsMenu() {
-  if (document.getElementById('keybinds-menu')) return;
-  const menu = document.createElement('div');
-  menu.id = 'keybinds-menu';
-  menu.style.position = 'fixed';
-  menu.style.top = '10px';
-  menu.style.right = '10px';
-  menu.style.background = 'rgba(30,30,30,0.95)';
-  menu.style.color = '#fff';
-  menu.style.padding = '14px 18px';
-  menu.style.borderRadius = '8px';
-  menu.style.fontSize = '15px';
-  menu.style.zIndex = 10000;
-  menu.style.boxShadow = '0 2px 12px #0008';
-  menu.innerHTML = `
+
+    // Keyboard shortcuts now trigger button clicks
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'r') {
+            const btn = document.getElementById('reset-road-btn');
+            if (btn) btn.click();
+        } else if (event.key === 'n') {
+            const btn = document.getElementById('new-road-btn');
+            if (btn) btn.click();
+        } else if (event.key === 'e') {
+            const btn = document.getElementById('edit-road-btn');
+            if (btn) btn.click();
+        } else if (event.key === 'd') {
+            const btn = document.getElementById('delete-road-btn');
+            if (btn) btn.click();
+        } else if (event.key === 'x') {
+            deleteAllRoads(scene);
+        }
+    });
+    // --- Keybinds Help Menu ---
+    function createKeybindsMenu() {
+        if (document.getElementById('keybinds-menu')) return;
+        const menu = document.createElement('div');
+        menu.id = 'keybinds-menu';
+        menu.style.position = 'fixed';
+        menu.style.top = '10px';
+        menu.style.right = '10px';
+        menu.style.background = 'rgba(30,30,30,0.95)';
+        menu.style.color = '#fff';
+        menu.style.padding = '14px 18px';
+        menu.style.borderRadius = '8px';
+        menu.style.fontSize = '15px';
+        menu.style.zIndex = 10000;
+        menu.style.boxShadow = '0 2px 12px #0008';
+        menu.innerHTML = `
     <b>Keybinds</b><br>
     <span style="color:#ffd700">N</span>: New Road<br>
     <span style="color:#ffd700">R</span>: Reset Drawing<br>
     <span style="color:#ffd700">E</span>: Edit Road<br>
     <span style="color:#ffd700">D</span>: Delete Road<br>
+    <span style="color:#ffd700">X</span>: Delete All Roads<br>
     <span style="color:#ffd700">Right Click</span>: Add Point<br>
     <span style="color:#ffd700">Double Click</span>: Finish Road<br>
     <hr style="border:1px solid #444; margin:8px 0;">
     <span style="font-size:13px; color:#aaa">You can close this menu with <b>?</b></span>
   `;
-  document.body.appendChild(menu);
-  // Toggle menu with ?
-  window.addEventListener('keydown', (e) => {
-    if (e.key === '?') {
-      menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
-    }
-  });
-}
-createKeybindsMenu();
-
-  renderer.domElement.addEventListener('pointerdown', (event) => {
-    // Only respond to right mouse button (event.button === 2)
-    if (event.button !== 2) return;
-    // Get mouse position in normalized device coordinates (-1 to +1)
-    const rect = renderer.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
-    );
-
-    // Raycast to the xy-plane (z=0)
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-    const point = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, point);
-
-    // (Removed shift+click camera rotation as requested)
-
-    // Merge with existing point if within 0.003 units (0.3 cm)
-    let merged = false;
-    for (let i = 0; i < currentPoints.length; i++) {
-      if (point.distanceTo(currentPoints[i]) < 0.003) {
-        // Snap to existing point
-        point.copy(currentPoints[i]);
-        merged = true;
-        break;
-      }
-    }
-    if (!merged) {
-      currentPoints.push(point.clone());
-      // Draw a small sphere at each clicked point
-      const marker = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 12, 12),
-        new THREE.MeshBasicMaterial({ color: 0xff0000 })
-      );
-      marker.position.copy(point);
-      scene.add(marker);
-      pointMarkers.push(marker);
-      updateCurrentLine(scene);
-    }
-  });
-
-  renderer.domElement.addEventListener('dblclick', () => {
-    if (currentPoints.length > 1) {
-        const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 2.0;
-        const curve = new THREE.CatmullRomCurve3(currentPoints);
-
-        // Create temporary preview mesh (not added to roadMeshes)
-        let previewMesh = createRoadMeshFromSpline(curve, width, 100);
-        scene.add(previewMesh);
-
-        showAddLanePopup(currentPoints, width, scene, (app_id, poly, width, type) => {
-            // Remove preview mesh
-            scene.remove(previewMesh);
-            if (previewMesh.geometry) previewMesh.geometry.dispose();
-            if (previewMesh.material) previewMesh.material.dispose();
-
-            // 1. Add lane to roadNetwork
-            addLane(app_id, poly, width, type);
-
-            // 2. Build final mesh
-            const finalCurve = new THREE.CatmullRomCurve3(poly);
-            const finalMesh = createRoadMeshFromSpline(finalCurve, width, 100);
-            finalMesh.userData = { lane_id: Date.now(), app_id, type, width };
-            scene.add(finalMesh);
-
-            // 3. Add to global arrays
-            roadMeshes.push(finalMesh);
-            polylines.push(poly.map(p => p.clone()));
-
-            // 4. Update UI and save
-            updateRoadTreeUI();
-            saveRoadNetwork();
-
-            // 5. Cleanup
-            if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
-            currentPoints = [];
-            updateRoadUI();
+        document.body.appendChild(menu);
+        // Toggle menu with ?
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '?') {
+                menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
+            }
         });
-      }
-  });
+    }
+    createKeybindsMenu();
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+        // Only respond to right mouse button (event.button === 2)
+        if (event.button !== 2) return;
+        // Get mouse position in normalized device coordinates (-1 to +1)
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+
+        // Raycast to the xy-plane (z=0)
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const point = new THREE.Vector3();
+        raycaster.ray.intersectPlane(plane, point);
+
+        // (Removed shift+click camera rotation as requested)
+
+        // Merge with existing point if within 0.003 units (0.3 cm)
+        let merged = false;
+        for (let i = 0; i < currentPoints.length; i++) {
+            if (point.distanceTo(currentPoints[i]) < 0.003) {
+                // Snap to existing point
+                point.copy(currentPoints[i]);
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) {
+            currentPoints.push(point.clone());
+            // Draw a small sphere at each clicked point
+            const marker = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 12, 12),
+                new THREE.MeshBasicMaterial({ color: 0xff0000 })
+            );
+            marker.position.copy(point);
+            scene.add(marker);
+            pointMarkers.push(marker);
+            updateCurrentLine(scene);
+        }
+    });
+
+    renderer.domElement.addEventListener('dblclick', () => {
+        if (currentPoints.length > 1) {
+            const width = getCurrentRoadWidth ? getCurrentRoadWidth() : 2.0;
+            const curve = new THREE.CatmullRomCurve3(currentPoints);
+
+            // Create temporary preview mesh (not added to roadMeshes)
+            let previewMesh = createRoadMeshFromSpline(curve, width, 100);
+            scene.add(previewMesh);
+
+            showAddLanePopup(currentPoints, width, scene, (app_id, poly, width, type, reversed) => {
+                // Remove preview mesh
+                scene.remove(previewMesh);
+                if (previewMesh.geometry) previewMesh.geometry.dispose();
+                if (previewMesh.material) previewMesh.material.dispose();
+
+                // 1. Add lane to roadNetwork
+                addLane(app_id, poly, width, type, reversed);
+
+                // 2. Build final mesh
+                const finalCurve = new THREE.CatmullRomCurve3(poly);
+                const finalMesh = createRoadMeshFromSpline(finalCurve, width, 100);
+                finalMesh.userData = { lane_id: Date.now(), app_id, type, width };
+                scene.add(finalMesh);
+
+                // 3. Add to global arrays
+                roadMeshes.push(finalMesh);
+                polylines.push(poly.map(p => p.clone()));
+
+                // 4. Update UI and save
+                updateRoadTreeUI();
+                saveRoadNetwork();
+
+                // 5. Cleanup
+                if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
+                currentPoints = [];
+                updateRoadUI();
+            });
+        }
+    });
 }
 
 // --- Ribbon/Road mesh from spline ---
 export function createRoadMeshFromSpline(curve, width = 2, segments = 100, getHeight = null) {
-  const halfWidth = width / 2;
-  const points = curve.getPoints(segments);
+    const halfWidth = width / 2;
+    const points = curve.getPoints(segments);
 
-  const leftSide = [];
-  const rightSide = [];
-  const uvs = [];
+    const leftSide = [];
+    const rightSide = [];
+    const uvs = [];
 
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    // Get tangent for direction
-    const t = curve.getTangent(i / (points.length - 1));
-    // 2D normal (perpendicular in xy)
-    const normal = new THREE.Vector3(-t.y, t.x, 0).normalize();
-    // Optionally follow terrain
-    let height = 0;
-    if (getHeight) height = getHeight(p.x, p.y);
-    // Center point
-    const center = new THREE.Vector3(p.x, p.y, getHeight ? height : p.z);
-    // Offset left/right
-    leftSide.push(center.clone().add(normal.clone().multiplyScalar(halfWidth)));
-    rightSide.push(center.clone().add(normal.clone().multiplyScalar(-halfWidth)));
-    // UVs: u = 0 (left), 1 (right); v = along road
-    uvs.push([0, i / (points.length - 1)]);
-    uvs.push([1, i / (points.length - 1)]);
-  }
-
-  // Build geometry for the road surface
-  const positions = [];
-  const uvArray = [];
-  for (let i = 0; i < leftSide.length - 1; i++) {
-    // Quad: left[i], left[i+1], right[i+1], right[i]
-    // First triangle
-    positions.push(...leftSide[i].toArray(), ...leftSide[i + 1].toArray(), ...rightSide[i + 1].toArray());
-    uvArray.push(...uvs[2 * i], ...uvs[2 * (i + 1)], ...uvs[2 * (i + 1) + 1]);
-    // Second triangle
-    positions.push(...leftSide[i].toArray(), ...rightSide[i + 1].toArray(), ...rightSide[i].toArray());
-    uvArray.push(...uvs[2 * i], ...uvs[2 * (i + 1) + 1], ...uvs[2 * i + 1]);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
-  geometry.computeVertexNormals();
-
-  // Road color: dark gray
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x222222,
-    side: THREE.DoubleSide,
-    metalness: 0.2,
-    roughness: 0.7,
-  });
-
-  // --- Dashed lines on each side (road edge markings) ---
-  const dashedLines = [];
-  function makeDashedLine(pointsArr) {
-    const lineGeom = new THREE.BufferGeometry().setFromPoints(pointsArr);
-    // Compute line distances for dashes
-    const line = new THREE.Line(lineGeom, new THREE.LineDashedMaterial({
-      color: 0xffffff,
-      dashSize: 1.2,
-      gapSize: 0.7,
-      linewidth: 2,
-    }));
-    // This is required for dashed lines to show up
-    line.computeLineDistances();
-    line.material.needsUpdate = true;
-    return line;
-  }
-  const leftLine = makeDashedLine(leftSide);
-  const rightLine = makeDashedLine(rightSide);
-  dashedLines.push(leftLine, rightLine);
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.userData = { width,
-    centerline: points.map(p => [p.x, p.y]), 
-    leftSide: leftSide.map(p => [p.x, p.y]), 
-    rightSide: rightSide.map(p => [p.x, p.y])
-   };
-  // Add dashed lines to scene when mesh is added
-  mesh._dashedLines = dashedLines;
-  mesh._dashedLinesAdded = false;
-  mesh.onBeforeRender = function(renderer, scene) {
-    if (!mesh._dashedLinesAdded) {
-      for (const l of dashedLines) {
-        scene.add(l);
-      }
-      mesh._dashedLinesAdded = true;
+    for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        // Get tangent for direction
+        const t = curve.getTangent(i / (points.length - 1));
+        // 2D normal (perpendicular in xy)
+        const normal = new THREE.Vector3(-t.y, t.x, 0).normalize();
+        // Optionally follow terrain
+        let height = 0;
+        if (getHeight) height = getHeight(p.x, p.y);
+        // Center point
+        const center = new THREE.Vector3(p.x, p.y, getHeight ? height : p.z);
+        // Offset left/right
+        leftSide.push(center.clone().add(normal.clone().multiplyScalar(halfWidth)));
+        rightSide.push(center.clone().add(normal.clone().multiplyScalar(-halfWidth)));
+        // UVs: u = 0 (left), 1 (right); v = along road
+        uvs.push([0, i / (points.length - 1)]);
+        uvs.push([1, i / (points.length - 1)]);
     }
-  };
-  mesh.onAfterRender = function(renderer, scene) {
-    // Remove dashed lines if mesh is removed from scene
-    if (mesh._dashedLinesAdded && !scene.children.includes(mesh)) {
-      for (const l of dashedLines) {
-        if (scene.children.includes(l)) scene.remove(l);
-      }
-      mesh._dashedLinesAdded = false;
-    }
-  };
 
-  return mesh;
-}
-    // Remove the current drawing line
-    if (currentLine) {
-      scene.remove(currentLine);
-      currentLine = null;
+    // Build geometry for the road surface
+    const positions = [];
+    const uvArray = [];
+    for (let i = 0; i < leftSide.length - 1; i++) {
+        // Quad: left[i], left[i+1], right[i+1], right[i]
+        // First triangle
+        positions.push(...leftSide[i].toArray(), ...leftSide[i + 1].toArray(), ...rightSide[i + 1].toArray());
+        uvArray.push(...uvs[2 * i], ...uvs[2 * (i + 1)], ...uvs[2 * (i + 1) + 1]);
+        // Second triangle
+        positions.push(...leftSide[i].toArray(), ...rightSide[i + 1].toArray(), ...rightSide[i].toArray());
+        uvArray.push(...uvs[2 * i], ...uvs[2 * (i + 1) + 1], ...uvs[2 * i + 1]);
     }
-    currentPoints = [];
-    // updateRoadUI();
-// Selection and UI logic
-function selectRoad(index, scene) {
-  if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
-    // Remove highlight from previous
-    roadMeshes[selectedRoadIndex].material.emissive = undefined;
-    roadMeshes[selectedRoadIndex].material.color.set(0x222222); // Reset to road color
-  }
-  selectedRoadIndex = index;
-  if (roadMeshes[selectedRoadIndex]) {
-    // Highlight selected (slightly lighter gray, not blue)
-    roadMeshes[selectedRoadIndex].material.emissive = new THREE.Color(0x444444);
-    roadMeshes[selectedRoadIndex].material.color.set(0x444444);
-    // --- Add width UI sync for selected road ---
-    // const slider = document.getElementById('road-width-slider');
-    const valueBox = document.getElementById('road-width-value');
-    if (valueBox && roadMeshes[selectedRoadIndex].userData.width) {
-      // slider.value = roadMeshes[selectedRoadIndex].userData.width;
-      valueBox.value = roadMeshes[selectedRoadIndex].userData.width;
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        side: THREE.DoubleSide,
+        metalness: 0.2,
+        roughness: 0.7,
+    });
+
+    // --- Dashed lines on each side (road edge markings) ---
+    const dashedLines = [];
+    function makeDashedLine(pointsArr) {
+        const lineGeom = new THREE.BufferGeometry().setFromPoints(pointsArr);
+        // Compute line distances for dashes
+        const line = new THREE.Line(lineGeom, new THREE.LineDashedMaterial({
+            color: 0xffffff,
+            dashSize: 1.2,
+            gapSize: 0.7,
+            linewidth: 2,
+        }));
+        line.computeLineDistances();
+        line.material.needsUpdate = true;
+        return line;
     }
-    // Listen for width changes and update mesh
-    if ( valueBox) {
-      // Remove previous listeners
-      // slider.oninput = valueBox.oninput = null;
-      const updateWidth = (val) => {
-        const w = parseFloat(val);
-        if (!w || w < 0.01 || w > 0.2) return;
-        // Remove old mesh and dashed lines
-        const oldMesh = roadMeshes[selectedRoadIndex];
-        if (oldMesh._dashedLines) {
-          for (const l of oldMesh._dashedLines) if (scene.children.includes(l)) scene.remove(l);
+    const leftLine = makeDashedLine(leftSide);
+    const rightLine = makeDashedLine(rightSide);
+    dashedLines.push(leftLine, rightLine);
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.userData = { width };
+    // Add dashed lines to scene when mesh is added
+    mesh._dashedLines = dashedLines;
+    mesh._dashedLinesAdded = false;
+    mesh.onBeforeRender = function (renderer, scene) {
+        if (!mesh._dashedLinesAdded) {
+            for (const l of dashedLines) {
+                scene.add(l);
+            }
+            mesh._dashedLinesAdded = true;
         }
-        scene.remove(oldMesh);
-        // Recreate mesh with new width
-        const curve = new THREE.CatmullRomCurve3(polylines[selectedRoadIndex]);
-        const newMesh = createRoadMeshFromSpline(curve, w, 100);
-        newMesh.userData.width = w;
-        scene.add(newMesh);
-        roadMeshes[selectedRoadIndex] = newMesh;
-        selectRoad(selectedRoadIndex, scene); // Reselect to update UI
-      };
-      // slider.oninput = (e) => { valueBox.value = e.target.value; updateWidth(e.target.value); };
-      // valueBox.oninput = (e) => { slider.value = e.target.value; updateWidth(e.target.value); };
+    };
+    mesh.onAfterRender = function (renderer, scene) {
+        // Remove dashed lines if mesh is removed from scene
+        if (mesh._dashedLinesAdded && !scene.children.includes(mesh)) {
+            for (const l of dashedLines) {
+                if (scene.children.includes(l)) scene.remove(l);
+            }
+            mesh._dashedLinesAdded = false;
+        }
+    };
+
+    return mesh;
+}
+
+// Remove the current drawing line
+if (currentLine) {
+    scene.remove(currentLine);
+    currentLine = null;
+}
+
+currentPoints = [];
+// updateRoadUI();
+// Selection and UI logic
+
+function selectRoad(index, scene) {
+    if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
+        roadMeshes[selectedRoadIndex].material.color.set(0x222222);
     }
-  }
-  updateRoadUI();
+    selectedRoadIndex = index;
+    if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
+        roadMeshes[selectedRoadIndex].material.color.set(0x444444);
+        // --- Add width UI sync for selected road ---
+        // const slider = document.getElementById('road-width-slider');
+        const valueBox = document.getElementById('road-width-value');
+        if (valueBox && roadMeshes[selectedRoadIndex].userData.width) {
+            // slider.value = roadMeshes[selectedRoadIndex].userData.width;
+            valueBox.value = roadMeshes[selectedRoadIndex].userData.width;
+        }
+        // Listen for width changes and update mesh
+        if (valueBox) {
+            // Remove previous listeners
+            // slider.oninput = valueBox.oninput = null;
+            const updateWidth = (val) => {
+                const w = parseFloat(val);
+                if (!w || w < 0.01 || w > 0.2) return;
+                // Remove old mesh and dashed lines
+                const oldMesh = roadMeshes[selectedRoadIndex];
+                if (oldMesh._dashedLines) {
+                    for (const l of oldMesh._dashedLines) if (scene.children.includes(l)) scene.remove(l);
+                }
+                scene.remove(oldMesh);
+                // Recreate mesh with new width
+                const curve = new THREE.CatmullRomCurve3(polylines[selectedRoadIndex]);
+                const newMesh = createRoadMeshFromSpline(curve, w, 100);
+                newMesh.userData.width = w;
+                scene.add(newMesh);
+                roadMeshes[selectedRoadIndex] = newMesh;
+                selectRoad(selectedRoadIndex, scene); // Reselect to update UI
+            };
+            // slider.oninput = (e) => { valueBox.value = e.target.value; updateWidth(e.target.value); };
+            // valueBox.oninput = (e) => { slider.value = e.target.value; updateWidth(e.target.value); };
+        }
+    }
+    updateRoadUI();
 }
 
 function deleteSelectedRoad(scene) {
-  if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
-    const mesh = roadMeshes[selectedRoadIndex];
+    if (selectedRoadIndex !== null && roadMeshes[selectedRoadIndex]) {
+        const mesh = roadMeshes[selectedRoadIndex];
 
-    // Remove dashed lines if present
-    if (mesh._dashedLines) {
-      for (const l of mesh._dashedLines) {
-        if (scene.children.includes(l)) scene.remove(l);
-      }
+        // Clear arrows for this road if it has a lane_id
+        if (mesh.userData && mesh.userData.lane_id !== undefined) {
+            clearArrowsForLane(scene, mesh.userData.lane_id);
+        }
+
+        // Also remove any arrow helpers that might be related
+        const arrowsToRemove = [];
+        scene.traverse((obj) => {
+            if (obj.type === 'ArrowHelper') {
+                arrowsToRemove.push(obj);
+            }
+        });
+        arrowsToRemove.forEach(arrow => scene.remove(arrow));
+
+        // Remove dashed lines if present
+        if (mesh._dashedLines) {
+            for (const l of mesh._dashedLines) {
+                if (scene.children.includes(l)) scene.remove(l);
+            }
+        }
+
+        // Remove mesh from scene
+        scene.remove(mesh);
+
+        // ALSO remove any related orphaned meshes (same approach as deleteAllRoads but more targeted)
+        const toRemove = [];
+        scene.traverse((obj) => {
+            if (obj.isMesh && obj.userData && (
+                (mesh.userData.lane_id !== undefined && obj.userData.lane_id === mesh.userData.lane_id) ||
+                (mesh.userData.width !== undefined && obj.userData.width === mesh.userData.width && obj !== mesh)
+            )) {
+                toRemove.push(obj);
+            }
+            // Also remove dashed lines that might be orphaned
+            if (obj.isLine && obj.material && obj.material.type === 'LineDashedMaterial') {
+                toRemove.push(obj);
+            }
+        });
+
+        // Remove orphaned elements
+        toRemove.forEach(obj => {
+            if (obj._dashedLines) {
+                for (const l of obj._dashedLines) {
+                    if (scene.children.includes(l)) scene.remove(l);
+                }
+            }
+            scene.remove(obj);
+        });
+
+        // Also remove from roadNetwork if this mesh has lane info
+        if (mesh.userData && mesh.userData.lane_id !== undefined && mesh.userData.app_id !== undefined) {
+            const approach = roadNetwork.Approaches.find(a => a.app_id === mesh.userData.app_id);
+            if (approach) {
+                approach.lanes = approach.lanes.filter(lane => lane.lane_id !== mesh.userData.lane_id);
+                if (approach.lanes.length === 0) {
+                    // Remove empty approach
+                    const approachIndex = roadNetwork.Approaches.indexOf(approach);
+                    roadNetwork.Approaches.splice(approachIndex, 1);
+                }
+            }
+        }
+
+        roadMeshes.splice(selectedRoadIndex, 1);
+        polylines.splice(selectedRoadIndex, 1);
+        selectedRoadIndex = null;
+        updateRoadUI();
+        updateRoadTreeUI(); // Update the road tree UI after removing from roadNetwork
     }
-
-    // Remove mesh from scene
-    scene.remove(mesh);
-
-    // Grab app_id + lane_id from mesh metadata
-    const { app_id, lane_id } = mesh.userData;
-
-    // Remove from arrays
-    roadMeshes[selectedRoadIndex] = null;
-    polylines[selectedRoadIndex] = null;
-    selectedRoadIndex = null;
-    updateRoadUI();
-
-    // Remove lane from roadNetwork
-    const approach = roadNetwork.Approaches.find(a => a.app_id === app_id);
-    if (approach) {
-      approach.lanes = approach.lanes.filter(lane => lane.lane_id !== lane_id);
-
-      // If approach has no lanes, remove the whole approach
-      if (approach.lanes.length === 0) {
-        roadNetwork.Approaches = roadNetwork.Approaches.filter(a => a.app_id !== app_id);
-      }
-    }
-
-    // Update UI + save to server
-    updateRoadTreeUI();
-    saveRoadNetwork();
-  }
 }
 
 
 function updateRoadUI() {
-  const delBtn = document.getElementById('delete-road-btn');
-  const editBtn = document.getElementById('edit-road-btn');
-  const status = document.getElementById('road-status');
-  const n = polylines.filter(p => p).length;
-  delBtn.disabled = selectedRoadIndex === null;
-  editBtn.disabled = selectedRoadIndex === null;
-  status.textContent = n + ' road' + (n === 1 ? '' : 's');
+    const delBtn = document.getElementById('delete-road-btn');
+    const editBtn = document.getElementById('edit-road-btn');
+    const status = document.getElementById('road-status');
+    const n = polylines.length;
+    delBtn.disabled = selectedRoadIndex === null;
+    editBtn.disabled = selectedRoadIndex === null;
+    status.textContent = n + ' road' + (n === 1 ? '' : 's');
 }
 
 // Click to select road
 function enableRoadSelection(scene, camera, renderer) {
-  renderer.domElement.addEventListener('pointerdown', (event) => {
-    const mouse = new THREE.Vector2(
-      ((event.clientX - renderer.domElement.getBoundingClientRect().left) / renderer.domElement.clientWidth) * 2 - 1,
-      -((event.clientY - renderer.domElement.getBoundingClientRect().top) / renderer.domElement.clientHeight) * 2 + 1
-    );
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-    let found = false;
-    for (let i = 0; i < roadMeshes.length; i++) {
-      if (!roadMeshes[i]) continue;
-      const intersects = raycaster.intersectObject(roadMeshes[i]);
-      if (intersects.length > 0) {
-        selectRoad(i, scene);
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      selectRoad(null, scene);
-    }
-  });
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return; // Left click only
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        for (let i = 0; i < roadMeshes.length; i++) {
+            const intersects = raycaster.intersectObject(roadMeshes[i]);
+            if (intersects.length > 0) {
+                selectRoad(i, scene);
+                return;
+            }
+        }
+        selectRoad(null, scene);
+    });
 }
 
 function updateCurrentLine(scene) {
-  if (currentLine) scene.remove(currentLine);
-  if (currentPoints.length < 2) return;
-  const geometry = new THREE.BufferGeometry().setFromPoints(currentPoints);
-  const material = new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.2, gapSize: 0.1 });
-  currentLine = new THREE.Line(geometry, material);
-  scene.add(currentLine);
+    if (currentLine) scene.remove(currentLine);
+    if (currentPoints.length < 2) return;
+    const geometry = new THREE.BufferGeometry().setFromPoints(currentPoints);
+    const material = new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.2, gapSize: 0.1 });
+    currentLine = new THREE.Line(geometry, material);
+    scene.add(currentLine);
 }
-
-
-
-
-
-
-
 
 
 // Expose for main.js
 function deleteSelectedRoadPublic(scene) {
-  deleteSelectedRoad(scene);
+    deleteSelectedRoad(scene);
+}
+
+
+function deleteAllRoads(scene) {
+    // Clear direction arrows first
+    clearAllArrows(scene);
+
+    // Clear tracked roads first
+    for (let i = 0; i < roadMeshes.length; i++) {
+        const mesh = roadMeshes[i];
+        // Remove dashed lines if present
+        if (mesh._dashedLines) {
+            for (const l of mesh._dashedLines) {
+                if (scene.children.includes(l)) scene.remove(l);
+            }
+        }
+        scene.remove(mesh);
+    }
+
+    // ALSO remove any orphaned road meshes and dashed lines
+    const toRemove = [];
+    scene.traverse((obj) => {
+        if (obj.isMesh && obj.userData && (
+            obj.userData.lane_id !== undefined ||
+            obj.userData.width !== undefined ||
+            (obj.material && obj.material.type === 'MeshStandardMaterial' && obj.material.color && obj.material.color.getHex() === 0x222222)
+        )) {
+            // This looks like a road mesh
+            toRemove.push(obj);
+        }
+        // Also remove ALL dashed lines (road markings)
+        if (obj.isLine && obj.material && obj.material.type === 'LineDashedMaterial') {
+            toRemove.push(obj);
+        }
+    });
+
+    // Remove orphaned road meshes
+    toRemove.forEach(mesh => {
+        if (mesh._dashedLines) {
+            for (const l of mesh._dashedLines) {
+                if (scene.children.includes(l)) scene.remove(l);
+            }
+        }
+        scene.remove(mesh);
+    });
+
+    roadMeshes.length = 0;
+    polylines.length = 0;
+    roadNetwork.Approaches.length = 0;
+    selectedRoadIndex = null;
+    updateRoadUI();
+    updateRoadTreeUI();
 }
 
 function setupRoadUI(scene, camera, renderer) {
-  document.getElementById('delete-road-btn').onclick = () => deleteSelectedRoad(scene);
-  document.getElementById('edit-road-btn').onclick = () => {
-    // Edit mode (future)
-    alert('Edit mode not implemented yet.');
-  };
-  document.getElementById('new-road-btn').onclick = () => {
-    // Deselect current, allow new road drawing
-    selectRoad(null, scene);
-    // Clear currentPoints, remove preview line and point markers
-    currentPoints = [];
-    if (currentLine) {
-      scene.remove(currentLine);
-      currentLine = null;
+    document.getElementById('delete-road-btn').onclick = () => deleteSelectedRoad(scene);
+
+    document.getElementById('edit-road-btn').onclick = () => {
+        // Edit mode (future)
+        alert('Edit mode not implemented yet.');
+    };
+
+    document.getElementById('new-road-btn').onclick = () => {
+        // Deselect current, allow new road drawing
+        selectRoad(null, scene);
+        // Clear currentPoints, remove preview line and point markers
+        currentPoints = [];
+        if (currentLine) {
+            scene.remove(currentLine);
+            currentLine = null;
+        }
+        if (typeof clearPointMarkers === 'function') clearPointMarkers();
+    };
+
+    // Add a reset button if not present
+    let resetBtn = document.getElementById('reset-road-btn');
+
+    if (!resetBtn) {
+        resetBtn = document.createElement('button');
+        resetBtn.id = 'reset-road-btn';
+        resetBtn.style.display = 'none';
+        document.body.appendChild(resetBtn);
     }
-    if (typeof clearPointMarkers === 'function') clearPointMarkers();
-  };
-  // Add a reset button if not present
-  let resetBtn = document.getElementById('reset-road-btn');
-  if (!resetBtn) {
-    resetBtn = document.createElement('button');
-    resetBtn.id = 'reset-road-btn';
-    resetBtn.style.display = 'none';
-    document.body.appendChild(resetBtn);
-  }
-  resetBtn.onclick = () => {
-    currentPoints = [];
-    if (currentLine) { scene.remove(currentLine); currentLine = null; }
-    // Remove all cached point markers (force global clear)
-    if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
+
+    resetBtn.onclick = () => {
+        currentPoints = [];
+        if (currentLine) { scene.remove(currentLine); currentLine = null; }
+        // Remove all cached point markers (force global clear)
+        if (window.__clearRoadPointMarkers) window.__clearRoadPointMarkers();
+        updateRoadUI();
+    };
+    enableRoadSelection(scene, camera, renderer);
     updateRoadUI();
-  };
-  enableRoadSelection(scene, camera, renderer);
-  updateRoadUI();
 }
 
-export { setupRoadUI, deleteSelectedRoadPublic };
+export { setupRoadUI, deleteSelectedRoadPublic, deleteAllRoads };

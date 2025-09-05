@@ -316,19 +316,30 @@ function shouldUpdatePointCloudColors(pointCloud, newPoints, newHeightRange) {
   const pointType = userData.pointType;
   const oldRange = userData.heightRange || { min: 0, max: 10 };
   
+  // Calculate relative change in range to avoid issues with very small ranges
+  const oldRangeSize = Math.abs(oldRange.max - oldRange.min) || 1;
+  const newRangeSize = Math.abs(newHeightRange.max - newHeightRange.min) || 1;
+  const rangeSizeChange = Math.abs(newRangeSize - oldRangeSize) / oldRangeSize;
+  
   if (pointType === 'foreground') {
-    // Foreground: update colors if height range changed moderately
-    return (Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
-            Math.abs(newHeightRange.max - oldRange.max) > 0.5);
+    // Foreground: update colors if height range changed moderately (either absolute or relative)
+    const absoluteChange = Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
+                          Math.abs(newHeightRange.max - oldRange.max) > 0.5;
+    const relativeChange = rangeSizeChange > 0.1; // 10% change in range size
+    return absoluteChange || relativeChange;
   } else if (pointType === 'background') {
     // Background: only update colors if height range changed significantly
-    return (Math.abs(newHeightRange.min - oldRange.min) > 2.0 || 
-            Math.abs(newHeightRange.max - oldRange.max) > 2.0);
+    const absoluteChange = Math.abs(newHeightRange.min - oldRange.min) > 2.0 || 
+                          Math.abs(newHeightRange.max - oldRange.max) > 2.0;
+    const relativeChange = rangeSizeChange > 0.25; // 25% change in range size
+    return absoluteChange || relativeChange;
   }
   
-  // Default behavior
-  return (Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
-          Math.abs(newHeightRange.max - oldRange.max) > 0.5);
+  // Default behavior for unknown point types
+  const absoluteChange = Math.abs(newHeightRange.min - oldRange.min) > 0.5 || 
+                        Math.abs(newHeightRange.max - oldRange.max) > 0.5;
+  const relativeChange = rangeSizeChange > 0.15; // 15% change in range size
+  return absoluteChange || relativeChange;
 }
 
 

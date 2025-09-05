@@ -1,135 +1,163 @@
-import os
 import io
-import sys
 import math
-
 import requests
 from PIL import Image
-import numpy as np
+from typing import Tuple, List
 from collections import defaultdict
-tile_count = 0
-API_KEY = "sk.eyJ1Ijoic3dhcmNvcGFsbSIsImEiOiJjbWRpbXRjbmQwZTdvMmxxeXZzb3g2OHBhIn0.xObuob5UikDQ08b4D2dIDw"
 
-'''
-Satellite Image related functions
-'''
-def wgs2tile(lat: np.float64, lon = np.float64, zoom_level: int = 22, tile_size: int = 256):
-    mercator = -math.log(math.tan((0.25 +  lat / 360) * math.pi))
-    world_x = tile_size * (lon / 360 + 0.5)
-    world_y =  tile_size / 2 * (1 +  mercator / math.pi)
-    pixel_x = math.floor(world_x*2**zoom_level)
-    pixel_y = math.floor(world_y*2**zoom_level)
-    tile_x = math.floor(pixel_x /tile_size)
-    tile_y = math.floor(pixel_y/tile_size)
+class SatelliteImageDownloader:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.tile_count = 0
     
-    return (tile_x, tile_y), (pixel_x, pixel_y)
+    def wgs84_to_tile(self, lat: float, lon: float, zoom: int, tile_size: int = 256) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+        """Convert WGS84 coordinates to tile coordinates and pixel coordinates."""
+        # Web Mercator projection
+        lat_rad = math.radians(lat)
+        n = 2 ** zoom
+        
+        tile_x = int((lon + 180) / 360 * n)
+        tile_y = int((1 - math.asinh(math.tan(lat_rad)) / math.pi) / 2 * n)
+        
+        # Calculate pixel coordinates within the tile
+        pixel_x = int(((lon + 180) / 360 * n - tile_x) * tile_size)
+        pixel_y = int(((1 - math.asinh(math.tan(lat_rad)) / math.pi) / 2 * n - tile_y) * tile_size)
+        
+        return (tile_x, tile_y), (pixel_x, pixel_y)
     
-
-def all_tile_ids(nw_tile, ne_tile, sw_tile, se_tile):
-    x_min = min(nw_tile[0], sw_tile[0])
-    x_max = max(ne_tile[0], se_tile[0])
-    y_min = min(nw_tile[1], ne_tile[1])
-    y_max = max(sw_tile[1], se_tile[1])
-   
-    tiles = []
-    for x in range(x_min, x_max + 1):
-        for y in range(y_min, y_max + 1):
-            tiles.append((x, y))
-    return tiles
-
-def get_tiles(min_lon: np.float64, min_lat: np.float64, max_lon: np.float64, max_lat: np.float64, zoom_level: int = 22, tile_size: int = 256):
-    nw_tile, nw_pixel = wgs2tile(max_lat, min_lon, zoom_level, tile_size)
-    ne_tile, _ = wgs2tile(max_lat, max_lon, zoom_level, tile_size)
-    sw_tile, _ = wgs2tile(min_lat, min_lon, zoom_level, tile_size)
-    se_tile, se_pixel = wgs2tile(min_lat, max_lon, zoom_level, tile_size)
-    left_crop = nw_pixel[0] - tile_size*(nw_tile[0])
-    upper_crop = nw_pixel[1] - tile_size*(nw_tile[1])
-    right_crop = se_pixel[0] - tile_size*(nw_tile[0])
-    lower_crop = se_pixel[1] - tile_size*(nw_tile[1])
-  
-    return all_tile_ids(nw_tile, ne_tile, sw_tile, se_tile), (left_crop, upper_crop, right_crop, lower_crop) 
-
-def create_full_image(all_columns: list):
-    img = Image.new('RGB', (all_columns[0].width * len(all_columns), all_columns[0].height ))
-    col_width = all_columns[0].width
-    paste_width = 0
-    for tile in all_columns:
-        img.paste(tile, ( paste_width, 0))
-        paste_width+= col_width
-    return img
-  
-def create_tile_column(all_tiles: list):
-    try: 
-        column = Image.new('RGB', (all_tiles[0].width, all_tiles[0].height *len(all_tiles)))
-        img_height = all_tiles[0].height
-        paste_height = 0
-        for tile in all_tiles:
-            column.paste(tile, (0, paste_height))
-            paste_height+= img_height
-        return column
-    except Exception as e: 
-        print("Exception in create_tile_column: "+ str(e))
-        return None
-
-def m2latlon(center_pnt, height, width):
-    lat_center, lon_center = center_pnt
-    d_heigh = height/2 # lat
-    d_width = width/2 # lon
+    def meters_to_bbox(self, center_lat: float, center_lon: float, width_m: int, height_m: int) -> Tuple[float, float, float, float]:
+        """Convert center point and dimensions in meters to bounding box."""
+        # Approximate conversion (more accurate at equator)
+        lat_deg_per_m = 1 / 111111  # roughly 111km per degree
+        lon_deg_per_m = lat_deg_per_m / math.cos(math.radians(center_lat))
+        
+        half_height_deg = (height_m / 2) * lat_deg_per_m
+        half_width_deg = (width_m / 2) * lon_deg_per_m
+        
+        return (
+            center_lon - half_width_deg,  # min_lon
+            center_lat - half_height_deg,  # min_lat  
+            center_lon + half_width_deg,  # max_lon
+            center_lat + half_height_deg   # max_lat
+        )
     
-    lat_in_m = 111111
-    d_lat = d_heigh/lat_in_m
+    def get_tiles_for_bbox(self, min_lon: float, min_lat: float, max_lon: float, max_lat: float, zoom: int, tile_size: int = 256):
+        """Get all tile coordinates needed to cover the bounding box."""
+        # Get corner tiles
+        (nw_tile_x, nw_tile_y), (nw_pixel_x, nw_pixel_y) = self.wgs84_to_tile(max_lat, min_lon, zoom, tile_size)
+        (se_tile_x, se_tile_y), (se_pixel_x, se_pixel_y) = self.wgs84_to_tile(min_lat, max_lon, zoom, tile_size)
+        
+        # Generate all tiles in the range
+        tiles = []
+        for x in range(nw_tile_x, se_tile_x + 1):
+            for y in range(nw_tile_y, se_tile_y + 1):
+                tiles.append((x, y))
+        
+        # Calculate crop bounds for final image
+        left_crop = nw_pixel_x
+        top_crop = nw_pixel_y
+        right_crop = se_pixel_x + (se_tile_x - nw_tile_x) * tile_size
+        bottom_crop = se_pixel_y + (se_tile_y - nw_tile_y) * tile_size
+        
+        return tiles, (left_crop, top_crop, right_crop, bottom_crop)
     
-    lon_in_m = lat_in_m *math.cos(math.radians(lat_center))
-    d_lon = d_width/lon_in_m
+    def download_tile(self, x: int, y: int, zoom: int, tile_size: int = 256) -> Image.Image:
+        """Download a single tile from Mapbox."""
+        url = f'https://api.mapbox.com/v4/mapbox.satellite/{zoom}/{x}/{y}'
+        url += '@2x.png' if tile_size == 512 else '.png'
+        
+        params = {'access_token': self.api_key}
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            return Image.open(io.BytesIO(response.content)).convert("RGB")
+        except requests.RequestException as e:
+            print(f"Error downloading tile ({x}, {y}): {e}")
+            # Return a blank tile as fallback
+            return Image.new('RGB', (tile_size, tile_size), color=(128, 128, 128))
     
-    min_lat = lat_center - d_lat
-    max_lat = lat_center + d_lat
-    min_lon = lon_center - d_lon
-    max_lon = lon_center + d_lon
-    
-    return min_lon, min_lat, max_lon, max_lat
-
-def create_satellite_img(center_pnt: tuple, sat_path: str, height: int= 200, width: int = 200, zoom_level: int = 19, tile_size: int = 512): 
-
-    min_lon, min_lat, max_lon, max_lat = m2latlon(center_pnt=center_pnt, height=height, width=width)# west, south, east, north
-
-    tiles, crop_bounds = get_tiles(min_lon, min_lat, max_lon, max_lat, zoom_level, tile_size)
-    global tile_count
-    tile_count += len(tiles)
-    all_columns = []
-
-    grouped = defaultdict(list)
-    for x, y in tiles:
-        grouped[x].append(y)
-
-    # Iterate through x and then all y for that x
-    for x in sorted(grouped):
-        col_tiles = []
-        for y in sorted(grouped[x]):
-
-            url = 'https://api.mapbox.com/v4/mapbox.satellite/'+str(zoom_level) +'/' + str(x)  +'/'+  str(y) 
-            url += '@2x.png' if tile_size == 512 else '.png'
+    def stitch_tiles(self, tiles: List[Tuple[int, int]], zoom: int, tile_size: int = 256) -> Image.Image:
+        """Download and stitch tiles into a single image."""
+        if not tiles:
+            raise ValueError("No tiles to stitch")
+        
+        # Group tiles by column (x coordinate)
+        columns = defaultdict(list)
+        for x, y in tiles:
+            columns[x].append(y)
+        
+        # Sort to ensure consistent ordering
+        sorted_x = sorted(columns.keys())
+        for x in sorted_x:
+            columns[x].sort()
+        
+        # Create columns
+        column_images = []
+        for x in sorted_x:
+            column_tiles = []
+            for y in columns[x]:
+                tile = self.download_tile(x, y, zoom, tile_size)
+                column_tiles.append(tile)
+                self.tile_count += 1
             
-            params = {
-                'access_token': API_KEY              
-            }
-            
-            response = requests.get(url, params=params)
-            
-            if response.status_code == 200:
+            # Stack tiles vertically to create column
+            if column_tiles:
+                column_height = len(column_tiles) * tile_size
+                column_img = Image.new('RGB', (tile_size, column_height))
+                
+                for i, tile in enumerate(column_tiles):
+                    column_img.paste(tile, (0, i * tile_size))
+                
+                column_images.append(column_img)
         
-                sat_tile = Image.open(io.BytesIO(response.content)).convert("RGB")
-                col_tiles.append(sat_tile)
+        # Combine columns horizontally
+        if not column_images:
+            raise ValueError("No column images created")
         
-            else:
-                print(f"Error fetching the image: {response.status_code}")
+        total_width = len(column_images) * tile_size
+        total_height = column_images[0].height
+        final_image = Image.new('RGB', (total_width, total_height))
         
+        for i, column in enumerate(column_images):
+            final_image.paste(column, (i * tile_size, 0))
         
-        column_img = create_tile_column(col_tiles)
-        all_columns.append(column_img)
-                    
-    sat_png = create_full_image(all_columns) 
-    cropped = sat_png.crop(crop_bounds)
-    cropped.save(sat_path)
+        return final_image
+    
+    def create_satellite_image(self, center_lat: float, center_lon: float, width_m: int, height_m: int, 
+                             output_path: str, zoom: int = 19, tile_size: int = 512):
+        """Create a satellite image for the specified area."""
+        # Convert center point and dimensions to bounding box
+        min_lon, min_lat, max_lon, max_lat = self.meters_to_bbox(center_lat, center_lon, width_m, height_m)
+        
+        # Get tiles needed
+        tiles, crop_bounds = self.get_tiles_for_bbox(min_lon, min_lat, max_lon, max_lat, zoom, tile_size)
+        
+        print(f"Downloading {len(tiles)} tiles...")
+        
+        # Stitch tiles together
+        stitched_image = self.stitch_tiles(tiles, zoom, tile_size)
+        
+        # Crop to exact bounds
+        cropped_image = stitched_image.crop(crop_bounds)
+        
+        # Save result
+        cropped_image.save(output_path)
+        print(f"Satellite image saved to {output_path}")
+        print(f"Total tiles downloaded: {self.tile_count}")
 
-  
+# Usage example:
+if __name__ == "__main__":
+    API_KEY = "sk.eyJ1Ijoic3dhcmNvcGFsbSIsImEiOiJjbWRpbXRjbmQwZTdvMmxxeXZzb3g2OHBhIn0.xObuob5UikDQ08b4D2dIDw"
+    
+    downloader = SatelliteImageDownloader(API_KEY)
+    
+    # Download 200x200 meter satellite image
+    downloader.create_satellite_image(
+        center_lat=40.7128,  # NYC latitude
+        center_lon=-74.0060, # NYC longitude
+        width_m=200,
+        height_m=200,
+        output_path="satellite_image.png",
+        zoom=19
+    )

@@ -5,3 +5,5 @@ numpy
 natsort
 flask
 shapely
+pillow
+requests

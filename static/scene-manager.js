@@ -194,36 +194,6 @@ this.objects.satellitePlane.position.set(0, 0, -0.01);
 this.scene.add(this.objects.satellitePlane);
 setSatellitePlane(this.objects.satellitePlane);
 
-//     if (this.objects.satellitePlane) {
-//       // clean up old material + texture
-//       this.objects.satellitePlane.material.map?.dispose();
-//       this.objects.satellitePlane.material.dispose();
-
-//       // create new material with the new texture
-//       this.objects.satellitePlane.material = new THREE.MeshBasicMaterial({
-//         map: texture,
-//         side: THREE.DoubleSide,
-//         transparent: true,
-//         opacity: 1.0,
-//       });
-
-//       texture.needsUpdate = true;
-//     }
-//  else {
-//       console.log("ELSEEEEEEEEEEEEEEEE")
-//       // 🔹 create plane on first load
-//       const satGeometry = new THREE.PlaneGeometry(satWidth, satHeight);
-//       const satMaterial = new THREE.MeshBasicMaterial({
-//         map: texture,
-//         side: THREE.DoubleSide,
-//         transparent: true,
-//         opacity: 1.0,
-//       });
-
-//       this.objects.satellitePlane = new THREE.Mesh(satGeometry, satMaterial);
-//       this.objects.satellitePlane.position.set(0, 0, -0.01);
-//       this.scene.add(this.objects.satellitePlane);
-//     }
   });
 }
 

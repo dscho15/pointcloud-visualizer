@@ -233,12 +233,24 @@ class SettingsManager {
   // Import point cloud settings
   importPointCloudSettings(pcSettings) {
     for (const [id, settings] of Object.entries(pcSettings)) {
-      const pointCloud = this.pointCloudSets[id];
-      if (pointCloud && settings) {
-        pointCloud.visible = settings.visible;
-        pointCloud.position.set(settings.position.x, settings.position.y, settings.position.z);
-        pointCloud.rotation.set(settings.rotation.x, settings.rotation.y, settings.rotation.z);
-        pointCloud.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+      const pointCloudSet = this.pointCloudSets[id];
+      if (pointCloudSet && settings) {
+        // Apply settings to both foreground and background point clouds
+        ['foreground', 'background'].forEach(type => {
+          const pointCloud = pointCloudSet[type];
+          if (pointCloud) {
+            pointCloud.visible = settings.visible;
+            if (settings.position) {
+              pointCloud.position.set(settings.position.x, settings.position.y, settings.position.z);
+            }
+            if (settings.rotation) {
+              pointCloud.rotation.set(settings.rotation.x, settings.rotation.y, settings.rotation.z);
+            }
+            if (settings.scale) {
+              pointCloud.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+            }
+          }
+        });
       }
     }
   }
